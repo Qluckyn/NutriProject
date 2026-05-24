@@ -1,0 +1,19 @@
+# 模型文件（太大，不上传）
+*.pth
+*.pt
+*.ckpt
+*.bin
+*.h5
+*.onnx
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 前端依赖
+node_modules/
+
+# 其他
+.DS_Store
+*.log
+cloudflared
