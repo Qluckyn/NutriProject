@@ -442,3 +442,403 @@ button {
     font-size: 24px;
   }
 }
+
+
+/* 临床量表评估新增样式 */
+.main-tab-bar,
+.sub-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.main-tab-bar button,
+.sub-tab-bar button {
+  min-height: 42px;
+  border: 1px solid #c8dbe6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #35516b;
+  font-weight: 700;
+  padding: 0 16px;
+}
+
+.main-tab-bar button.active,
+.sub-tab-bar button.active {
+  border-color: #147a92;
+  background: #147a92;
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(20, 122, 146, 0.18);
+}
+
+.assessment-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.form-card {
+  padding: 22px;
+  border: 1px solid #dceaf2;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(16, 37, 63, 0.06);
+}
+
+.section-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.section-kicker {
+  margin: 0 0 6px;
+  color: #147a92;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.section-title-row h2 {
+  margin: 0;
+  color: #10253f;
+  font-size: 22px;
+}
+
+.muted-note,
+.help-text,
+.field-block small {
+  color: #65778b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.form-grid.five-cols {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.form-grid.two-cols {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field-block {
+  display: grid;
+  gap: 8px;
+}
+
+.field-block > span {
+  color: #23384f;
+  font-weight: 700;
+}
+
+.field-block strong {
+  color: #d85b34;
+}
+
+.field-block input[type='text'],
+.field-block input[type='number'],
+.weight-table input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #c8dbe6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  padding: 0 11px;
+  outline: none;
+}
+
+.field-block input:focus,
+.weight-table input:focus {
+  border-color: #147a92;
+  box-shadow: 0 0 0 3px rgba(20, 122, 146, 0.12);
+}
+
+.field-block.invalid input,
+.weight-table tr.invalid input {
+  border-color: #e16635;
+  background: #fff8f5;
+}
+
+.field-block.callout {
+  padding: 12px;
+  border: 1px solid #9ed7c7;
+  border-radius: 8px;
+  background: #f1fbf8;
+}
+
+.segmented-options,
+.radio-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.segmented-options label,
+.radio-stack label,
+.check-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid #d7e6ee;
+  border-radius: 8px;
+  background: #f8fbfd;
+  color: #2c4056;
+  padding: 7px 10px;
+}
+
+.segmented-options.compact label {
+  min-width: 58px;
+  justify-content: center;
+}
+
+.weight-table-wrap {
+  overflow-x: auto;
+}
+
+.weight-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+}
+
+.weight-table th,
+.weight-table td {
+  border-bottom: 1px solid #e2edf4;
+  padding: 10px;
+  text-align: left;
+}
+
+.weight-table th {
+  color: #53667b;
+  font-size: 13px;
+  background: #f8fbfd;
+}
+
+.require-pill,
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.require-pill.required {
+  background: #fff1ea;
+  color: #b84d25;
+}
+
+.require-pill.optional {
+  background: #edf6fb;
+  color: #507086;
+}
+
+.intake-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.intake-week.highlight {
+  padding: 12px;
+  border: 1px solid #9ed7c7;
+  border-radius: 8px;
+  background: #f1fbf8;
+}
+
+.scale-tabs-card {
+  padding-bottom: 24px;
+}
+
+.scale-form {
+  display: grid;
+  gap: 18px;
+}
+
+.disease-section {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.disease-section h3,
+.disease-group h4,
+.criteria-columns h3 {
+  margin: 0;
+  color: #17314d;
+}
+
+.disease-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e0edf4;
+  border-radius: 8px;
+  background: #fbfdfe;
+}
+
+.disease-group h4 {
+  width: 100%;
+  font-size: 15px;
+}
+
+.compact-alert {
+  margin-bottom: 14px;
+}
+
+.field-error {
+  margin: 10px 0 0;
+  color: #b84d25;
+  font-size: 14px;
+}
+
+.assessment-result {
+  padding: 22px;
+  border-radius: 8px;
+  border: 1px solid #dceaf2;
+  background: #ffffff;
+}
+
+.assessment-result.good {
+  border-top: 5px solid #1fa67a;
+}
+
+.assessment-result.caution {
+  border-top: 5px solid #d9a221;
+}
+
+.assessment-result.risk {
+  border-top: 5px solid #e16635;
+}
+
+.score-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.score-hero span {
+  color: #65778b;
+  font-weight: 700;
+}
+
+.score-hero strong {
+  color: #10253f;
+  font-size: 34px;
+}
+
+.score-hero em {
+  border-radius: 999px;
+  background: #eef7fb;
+  color: #147a92;
+  font-style: normal;
+  font-weight: 800;
+  padding: 6px 12px;
+}
+
+.severity-red {
+  background: #fff1ea !important;
+  color: #c64b25 !important;
+}
+
+.severity-orange {
+  background: #fff8e8 !important;
+  color: #9b6f12 !important;
+}
+
+.result-metrics {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.result-metrics.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.result-metrics.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.result-metrics > div,
+.criteria-columns > div {
+  padding: 13px;
+  border: 1px solid #e0edf4;
+  border-radius: 8px;
+  background: #f8fbfd;
+}
+
+.result-metrics span {
+  display: block;
+  margin-bottom: 6px;
+  color: #65778b;
+  font-size: 13px;
+}
+
+.result-metrics strong {
+  color: #17314d;
+}
+
+.criteria-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.tag-pill {
+  margin: 10px 8px 0 0;
+  background: #e9f7f3;
+  color: #147a77;
+}
+
+.criteria-columns p {
+  margin: 10px 0 0;
+  color: #65778b;
+}
+
+@media (max-width: 980px) {
+  .form-grid.five-cols,
+  .form-grid.two-cols,
+  .intake-grid,
+  .result-metrics.three,
+  .result-metrics.four,
+  .criteria-columns {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .main-tab-bar button,
+  .sub-tab-bar button {
+    width: 100%;
+  }
+
+  .form-grid.five-cols,
+  .form-grid.two-cols,
+  .intake-grid,
+  .result-metrics.three,
+  .result-metrics.four,
+  .criteria-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .section-title-row {
+    display: grid;
+  }
+}
