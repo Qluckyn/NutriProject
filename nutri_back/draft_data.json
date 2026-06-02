@@ -1,0 +1,115 @@
+{
+  "patient_info": {
+    "name": "李琳",
+    "age": "62",
+    "gender": "female",
+    "height": "163",
+    "calfCircumference": ""
+  },
+  "weight_records": {
+    "0": "55",
+    "1": "56",
+    "2": "58",
+    "3": "58.6",
+    "4": "",
+    "5": "",
+    "6": "61",
+    "7": "",
+    "8": "",
+    "9": "",
+    "10": "",
+    "11": "",
+    "12": ""
+  },
+  "intake_records": {
+    "1": "",
+    "2": "",
+    "3": "",
+    "4": "58"
+  },
+  "nrs2002_form": {},
+  "mnasf_form": {},
+  "glim_form": {
+    "muscleLoss": "none",
+    "reducedIntake": "false",
+    "inflammationBurden": "false",
+    "selectedDiseaseIds": [],
+    "crp": "",
+    "il6": ""
+  },
+  "images": {
+    "front": {
+      "filename": "016268_0000_9230790861_1741916343990_Color_1920x1080.png",
+      "saved": true
+    },
+    "left": {
+      "filename": "016907_0000_9550153230_1741916365286_Color_1920x1080.png",
+      "saved": true
+    },
+    "right": {
+      "filename": "017741_0000_9966973599_1741916393078_Color_1920x1080.png",
+      "saved": true
+    }
+  },
+  "image_result": {
+    "prediction": "malnourished",
+    "malnourished_probability": 0.6943,
+    "normal_probability": 0.3057,
+    "confidence": 0.6943,
+    "n_views_used": 3,
+    "views_used": [
+      "front",
+      "left",
+      "right"
+    ],
+    "per_view_scores": {
+      "front": {
+        "malnourished_face": 0.3494,
+        "normal_face": 0.6506
+      },
+      "left": {
+        "malnourished_face": 0.8459,
+        "normal_face": 0.1541
+      },
+      "right": {
+        "malnourished_face": 0.8875,
+        "normal_face": 0.1125
+      }
+    },
+    "message": "系统基于正面、左45°、右45°图像分析，营养不良风险概率为69.43%。该结果仅用于辅助筛查，建议结合量表、体重变化、饮食摄入和临床评估进一步确认。"
+  },
+  "nrs2002_result": {
+    "tool": "NRS-2002",
+    "total_score": 1,
+    "nutrition_score": 1,
+    "disease_score": 0,
+    "age_score": 0,
+    "bmi": 20.7008,
+    "weight_loss_details": {
+      "1m_loss_pct": 1.7857,
+      "2m_loss_pct": 5.1724,
+      "3m_loss_pct": 6.1433
+    },
+    "has_risk": false,
+    "risk_level": "暂无营养风险",
+    "recommendation": "建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。",
+    "message": "NRS-2002总分为1分，判定为：暂无营养风险。建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。"
+  },
+  "mnasf_result": {
+    "tool": "MNA-SF",
+    "total_score": 8,
+    "score_breakdown": {
+      "q1_appetite": 1,
+      "q2_weight_loss": 0,
+      "q3_mobility": 2,
+      "q4_stress": 2,
+      "q5_mental": 2,
+      "q6_bmi_or_calf": 1
+    },
+    "bmi": 20.7008,
+    "weight_loss_3m_kg": 4,
+    "level": "营养不良风险",
+    "message": "MNA-SF总分为8/14分，评估等级为：营养不良风险。建议结合病史和饮食记录进行持续营养管理。"
+  },
+  "glim_result": null
+}

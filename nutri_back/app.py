@@ -229,7 +229,7 @@ from pydantic import BaseModel, Field
 from starlette.requests import Request
 
 DISEASES_PATH = "./diseases.json"
-REQUIRED_NRS_MONTHS = ("0", "1", "2", "3", "6", "12")
+REQUIRED_NRS_MONTHS = ("0", "1", "2", "3")
 REQUIRED_GLIM_MONTHS = ("0", "6", "12")
 
 diseases_cache: Dict[str, List[Dict[str, Any]]] = {"diseases": []}
@@ -552,3 +552,162 @@ def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
         "severity": severity,
         "message": message,
     }
+
+
+# =========================
+# 草稿持久化接口（追加）
+# =========================
+from fastapi.responses import FileResponse
+
+DRAFT_FILE = "./draft_data.json"
+DRAFT_IMAGE_DIR = "./draft_images"
+DRAFT_VIEWS = {"front", "left", "right"}
+
+
+def default_draft_data() -> Dict[str, object]:
+    """返回草稿初始结构，供初始化和清空草稿复用。"""
+    return {
+        "patient_info": {},
+        "weight_records": {},
+        "intake_records": {},
+        "nrs2002_form": {},
+        "mnasf_form": {},
+        "glim_form": {},
+        "images": {"front": None, "left": None, "right": None},
+        "image_result": None,
+        "nrs2002_result": None,
+        "mnasf_result": None,
+        "glim_result": None,
+    }
+
+
+@app.on_event("startup")
+def init_draft_storage() -> None:
+    """服务启动时确保草稿JSON和图片目录存在。"""
+    try:
+        image_dir = Path(DRAFT_IMAGE_DIR)
+        image_dir.mkdir(parents=True, exist_ok=True)
+        draft_path = Path(DRAFT_FILE)
+        if not draft_path.exists():
+            write_draft_file(default_draft_data())
+    except Exception as exc:
+        raise RuntimeError(f"初始化草稿存储失败：{exc}") from exc
+
+
+def read_draft_file() -> Dict[str, object]:
+    """以utf-8读取完整草稿文件。"""
+    with open(DRAFT_FILE, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def write_draft_file(data: Dict[str, object]) -> None:
+    """以utf-8覆盖写入完整草稿文件。"""
+    with open(DRAFT_FILE, "w", encoding="utf-8") as file:
+        json.dump(data, file, ensure_ascii=False, indent=2)
+
+
+def ensure_draft_view(view: str) -> None:
+    if view not in DRAFT_VIEWS:
+        raise HTTPException(status_code=400, detail="图片视角只能是 front、left 或 right。")
+
+
+def draft_image_path(view: str) -> Path:
+    return Path(DRAFT_IMAGE_DIR) / f"{view}.jpg"
+
+
+def draft_500(message: str, exc: Exception) -> None:
+    raise HTTPException(status_code=500, detail=f"{message}：{exc}") from exc
+
+
+@app.get("/draft")
+def get_draft() -> Dict[str, object]:
+    """读取并返回完整草稿。"""
+    try:
+        return read_draft_file()
+    except Exception as exc:
+        draft_500("读取草稿失败", exc)
+
+
+@app.post("/draft")
+def save_draft(data: Dict[str, object]) -> Dict[str, object]:
+    """接收前端完整草稿并覆盖保存。"""
+    try:
+        write_draft_file(data)
+        return {"saved": True}
+    except Exception as exc:
+        draft_500("保存草稿失败", exc)
+
+
+@app.delete("/draft")
+def clear_draft() -> Dict[str, object]:
+    """重置草稿JSON，并清空草稿图片目录。"""
+    try:
+        image_dir = Path(DRAFT_IMAGE_DIR)
+        image_dir.mkdir(parents=True, exist_ok=True)
+        for image_file in image_dir.iterdir():
+            if image_file.is_file():
+                image_file.unlink()
+        initial_data = default_draft_data()
+        write_draft_file(initial_data)
+        return initial_data
+    except Exception as exc:
+        draft_500("清空草稿失败", exc)
+
+
+@app.post("/draft/image/{view}")
+async def save_draft_image(view: str, file: UploadFile = File(...)) -> Dict[str, object]:
+    """保存单个视角草稿图片，并更新草稿JSON中的图片状态。"""
+    try:
+        ensure_draft_view(view)
+        validate_image_file(file, view)
+        content = await file.read()
+        image = Image.open(io.BytesIO(content)).convert("RGB")
+        Path(DRAFT_IMAGE_DIR).mkdir(parents=True, exist_ok=True)
+        image.save(draft_image_path(view), format="JPEG", quality=95)
+
+        draft = read_draft_file()
+        images = draft.get("images") or {"front": None, "left": None, "right": None}
+        images[view] = {"filename": file.filename, "saved": True}
+        draft["images"] = images
+        write_draft_file(draft)
+        return {"saved": True, "view": view, "filename": file.filename}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        draft_500("保存草稿图片失败", exc)
+
+
+@app.get("/draft/image/{view}")
+def get_draft_image(view: str) -> FileResponse:
+    """直接返回指定视角的草稿图片文件。"""
+    try:
+        ensure_draft_view(view)
+        image_path = draft_image_path(view)
+        if not image_path.exists():
+            raise HTTPException(status_code=404, detail="草稿图片不存在。")
+        return FileResponse(str(image_path), media_type="image/jpeg")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        draft_500("读取草稿图片失败", exc)
+
+
+@app.delete("/draft/image/{view}")
+def delete_draft_image(view: str) -> Dict[str, object]:
+    """删除指定视角草稿图片，并将草稿JSON中的图片状态置空。"""
+    try:
+        ensure_draft_view(view)
+        image_path = draft_image_path(view)
+        if image_path.exists():
+            image_path.unlink()
+
+        draft = read_draft_file()
+        images = draft.get("images") or {"front": None, "left": None, "right": None}
+        images[view] = None
+        draft["images"] = images
+        write_draft_file(draft)
+        return {"deleted": True, "view": view}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        draft_500("删除草稿图片失败", exc)

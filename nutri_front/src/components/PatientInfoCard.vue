@@ -1,4 +1,6 @@
 <script setup>
+import { inject, onMounted, ref, watch } from 'vue'
+
 const props = defineProps({
   modelValue: {
     type: Object,
@@ -11,6 +13,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+const draftContext = inject('draftContext', null)
+const isRestoring = ref(false)
 
 // 公共患者信息在三个量表间共享，局部更新后回传给父组件。
 function updateField(field, value) {
@@ -20,9 +24,40 @@ function updateField(field, value) {
   })
 }
 
+function restoreFromDraft() {
+  const saved = draftContext?.draftData.patient_info
+  if (!saved || !Object.keys(saved).length) return
+  isRestoring.value = true
+  emit('update:modelValue', { ...props.modelValue, ...saved })
+  requestAnimationFrame(() => {
+    isRestoring.value = false
+  })
+}
+
 function isMissing(field) {
   return props.showErrors && (props.modelValue[field] === '' || props.modelValue[field] === null || props.modelValue[field] === undefined)
 }
+
+onMounted(() => {
+  restoreFromDraft()
+})
+
+watch(
+  () => draftContext?.draftLoaded.value,
+  (loaded) => {
+    if (loaded) restoreFromDraft()
+  },
+)
+
+watch(
+  () => props.modelValue,
+  (value) => {
+    if (!draftContext || isRestoring.value) return
+    draftContext.draftData.patient_info = { ...value }
+    draftContext.saveDraft()
+  },
+  { deep: true },
+)
 </script>
 
 <template>

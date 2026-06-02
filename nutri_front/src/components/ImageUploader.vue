@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { inject, onMounted, ref, watch } from 'vue'
+import { API_BASE } from '../config'
 
 const props = defineProps({
   viewKey: {
@@ -21,15 +22,44 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['change', 'error'])
+const draftContext = inject('draftContext', null)
 
 const inputRef = ref(null)
 const previewUrl = ref('')
+const previewIsObjectUrl = ref(false)
 const isDragging = ref(false)
 
 const supportedTypes = ['image/jpeg', 'image/png', 'image/bmp']
 
+function restoreDraftPreview() {
+  const imageInfo = draftContext?.draftData.images?.[props.viewKey]
+  if (imageInfo?.saved) {
+    clearPreview()
+    previewUrl.value = `${API_BASE}/draft/image/${props.viewKey}?t=${Date.now()}`
+    previewIsObjectUrl.value = false
+    emit('change', props.viewKey, null)
+  }
+}
+
+async function saveDraftImage(file) {
+  if (!draftContext) return
+  const formData = new FormData()
+  formData.append('file', file)
+  try {
+    const response = await fetch(`${API_BASE}/draft/image/${props.viewKey}`, {
+      method: 'POST',
+      body: formData,
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || '图片草稿保存失败。')
+    draftContext.draftData.images[props.viewKey] = { filename: file.name, saved: true }
+  } catch (error) {
+    emit('error', error.message || `${props.title}图片草稿保存失败。`)
+  }
+}
+
 // 统一处理点击、拖拽进入的文件，校验格式后交给父组件。
-function handleFile(file) {
+async function handleFile(file) {
   if (!file) return
 
   if (!supportedTypes.includes(file.type)) {
@@ -37,12 +67,11 @@ function handleFile(file) {
     return
   }
 
-  if (previewUrl.value) {
-    URL.revokeObjectURL(previewUrl.value)
-  }
-
+  clearPreview()
   previewUrl.value = URL.createObjectURL(file)
+  previewIsObjectUrl.value = true
   emit('change', props.viewKey, file)
+  await saveDraftImage(file)
 }
 
 function openFileDialog() {
@@ -60,18 +89,46 @@ function onDrop(event) {
   handleFile(event.dataTransfer.files?.[0])
 }
 
-function removeImage(event) {
+async function removeImage(event) {
   event.stopPropagation()
   clearPreview()
   emit('change', props.viewKey, null)
+  if (!draftContext) return
+  try {
+    await fetch(`${API_BASE}/draft/image/${props.viewKey}`, { method: 'DELETE' })
+    draftContext.draftData.images[props.viewKey] = null
+  } catch (error) {
+    emit('error', `${props.title}图片草稿删除失败。`)
+  }
 }
 
 function clearPreview() {
-  if (previewUrl.value) {
+  if (previewUrl.value && previewIsObjectUrl.value) {
     URL.revokeObjectURL(previewUrl.value)
   }
   previewUrl.value = ''
+  previewIsObjectUrl.value = false
 }
+
+onMounted(() => {
+  restoreDraftPreview()
+})
+
+watch(
+  () => draftContext?.draftLoaded.value,
+  (loaded) => {
+    if (loaded) restoreDraftPreview()
+  },
+)
+
+watch(
+  () => draftContext?.draftData.images?.[props.viewKey],
+  (imageInfo) => {
+    if (imageInfo?.saved && !previewUrl.value) restoreDraftPreview()
+    if (!imageInfo && !previewIsObjectUrl.value) clearPreview()
+  },
+  { deep: true },
+)
 
 // 父组件触发重新筛查时，同步清空本组件内部预览状态。
 watch(

@@ -1,1 +1,1 @@
-export const API_BASE = 'https://kent-premises-hollow-supervision.trycloudflare.com'
+export const API_BASE = 'https://partition-province-readings-chart.trycloudflare.com'

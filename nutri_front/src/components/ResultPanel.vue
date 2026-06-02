@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   result: {
@@ -8,7 +8,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['reset'])
+const emit = defineEmits(['reset', 'enable-assessment', 'go-assessment'])
 const expanded = ref(false)
 
 const viewLabels = {
@@ -24,6 +24,15 @@ const resultIcon = computed(() => (isMalnourished.value ? '!' : '✓'))
 function toPercent(value) {
   return `${Math.round(Number(value || 0) * 10000) / 100}%`
 }
+
+// 面部筛查提示营养不良风险时，通知父组件解锁量表评估Tab。
+watch(
+  isMalnourished,
+  (value) => {
+    if (value) emit('enable-assessment')
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -84,6 +93,11 @@ function toPercent(value) {
           <p>正常：{{ toPercent(scores.normal_face) }}</p>
         </div>
       </div>
+    </div>
+
+    <div v-if="isMalnourished" class="assessment-advice">
+      <p>⚠️ 面部筛查提示存在营养不良风险，建议进一步进行量表评估以明确营养状态。</p>
+      <button class="secondary-button" type="button" @click="emit('go-assessment')">前往量表评估</button>
     </div>
 
     <button class="secondary-button" type="button" @click="emit('reset')">重新筛查</button>

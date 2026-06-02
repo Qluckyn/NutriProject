@@ -842,3 +842,52 @@ button {
     display: grid;
   }
 }
+
+
+/* 草稿持久化操作状态 */
+.assessment-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.save-status {
+  color: #147a77;
+  font-weight: 700;
+}
+
+
+/* 面部筛查与量表评估联动 */
+.main-tab-bar button.disabled,
+.main-tab-bar button:disabled {
+  cursor: not-allowed;
+  border-color: #d9e2e8;
+  background: #eef3f6;
+  color: #9aa8b4;
+  box-shadow: none;
+}
+
+.assessment-advice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px solid #b8d9f0;
+  border-radius: 8px;
+  background: #eef8ff;
+  color: #174766;
+}
+
+.assessment-advice p {
+  margin: 0;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+.assessment-advice .secondary-button {
+  margin-top: 0;
+}

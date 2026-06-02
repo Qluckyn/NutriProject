@@ -1,4 +1,6 @@
 <script setup>
+import { inject, onMounted, ref, watch } from 'vue'
+
 const props = defineProps({
   weeks: {
     type: Object,
@@ -11,6 +13,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:weeks', 'update:lastWeek'])
+const draftContext = inject('draftContext', null)
+const isRestoring = ref(false)
 
 // 第4周是最近一周，会同步给量表计算使用；前3周仅作为临床参考。
 function updateWeek(week, value) {
@@ -20,6 +24,39 @@ function updateWeek(week, value) {
     emit('update:lastWeek', value)
   }
 }
+
+function restoreFromDraft() {
+  const saved = draftContext?.draftData.intake_records
+  if (!saved || !Object.keys(saved).length) return
+  isRestoring.value = true
+  const next = { ...props.weeks, ...saved }
+  emit('update:weeks', next)
+  emit('update:lastWeek', next['4'] || '')
+  requestAnimationFrame(() => {
+    isRestoring.value = false
+  })
+}
+
+onMounted(() => {
+  restoreFromDraft()
+})
+
+watch(
+  () => draftContext?.draftLoaded.value,
+  (loaded) => {
+    if (loaded) restoreFromDraft()
+  },
+)
+
+watch(
+  () => props.weeks,
+  (value) => {
+    if (!draftContext || isRestoring.value) return
+    draftContext.draftData.intake_records = { ...value }
+    draftContext.saveDraft()
+  },
+  { deep: true },
+)
 </script>
 
 <template>

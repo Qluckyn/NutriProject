@@ -1,4 +1,6 @@
 <script setup>
+import { inject, onMounted, ref, watch } from 'vue'
+
 const props = defineProps({
   modelValue: {
     type: Object,
@@ -11,8 +13,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+const draftContext = inject('draftContext', null)
+const isRestoring = ref(false)
 const months = Array.from({ length: 13 }, (_, index) => String(index))
-const requiredMonths = ['0', '1', '2', '3', '6', '12']
+const requiredMonths = ['0', '1', '2', '3']
 
 // 表格保留0-12个月的完整记录，提交时由各量表按需校验。
 function updateWeight(month, value) {
@@ -22,9 +26,40 @@ function updateWeight(month, value) {
   })
 }
 
+function restoreFromDraft() {
+  const saved = draftContext?.draftData.weight_records
+  if (!saved || !Object.keys(saved).length) return
+  isRestoring.value = true
+  emit('update:modelValue', { ...props.modelValue, ...saved })
+  requestAnimationFrame(() => {
+    isRestoring.value = false
+  })
+}
+
 function missingRequired(month) {
   return props.showErrors && requiredMonths.includes(month) && !props.modelValue[month]
 }
+
+onMounted(() => {
+  restoreFromDraft()
+})
+
+watch(
+  () => draftContext?.draftLoaded.value,
+  (loaded) => {
+    if (loaded) restoreFromDraft()
+  },
+)
+
+watch(
+  () => props.modelValue,
+  (value) => {
+    if (!draftContext || isRestoring.value) return
+    draftContext.draftData.weight_records = { ...value }
+    draftContext.saveDraft()
+  },
+  { deep: true },
+)
 </script>
 
 <template>
@@ -34,7 +69,7 @@ function missingRequired(month) {
         <p class="section-kicker">Weight</p>
         <h2>月度体重记录</h2>
       </div>
-      <span class="muted-note">0、1、2、3、6、12个月为常用必填节点</span>
+      <span class="muted-note">0、1、2、3个月为常用必填节点，6、12个月为选填</span>
     </div>
 
     <div class="weight-table-wrap">
