@@ -6,6 +6,7 @@ const props = defineProps({
   patient: { type: Object, required: true },
   weights: { type: Object, required: true },
   diseases: { type: Array, default: () => [] },
+  glimConfig: { type: Object, default: null },
   showSubmit: { type: Boolean, default: true },
 })
 
@@ -29,7 +30,7 @@ const errorMessage = ref('')
 const result = ref(null)
 const touched = ref(false)
 
-const giSymptomOptions = [
+const fallbackGiSymptomOptions = [
   { id: 'dysphagia', name: '吞咽困难' },
   { id: 'nausea_vomiting', name: '恶心、呕吐' },
   { id: 'diarrhea', name: '腹泻' },
@@ -37,7 +38,7 @@ const giSymptomOptions = [
   { id: 'abdominal_pain', name: '腹痛' },
   { id: 'other', name: '其他' },
 ]
-const nutritionImpactOptions = [
+const fallbackNutritionImpactOptions = [
   { id: 'short_bowel', name: '短肠综合征' },
   { id: 'pancreatic_insufficiency', name: '胰腺功能不全' },
   { id: 'post_bariatric', name: '减肥手术后' },
@@ -48,9 +49,11 @@ const nutritionImpactOptions = [
   { id: 'high_output_stoma', name: '排出量较大的肠道造口患者' },
   { id: 'other', name: '其他' },
 ]
-const acuteDiseaseOptions = computed(() => diseaseOptions(['severe_infection', 'burn', 'trauma', 'brain_injury']))
-const malignantTumorOption = computed(() => diseaseOptions(['malignant_tumor'])[0])
-const chronicDiseaseOptions = computed(() => diseaseOptions(['copd', 'heart_failure', 'ckd', 'chronic_liver', 'liver_cirrhosis', 'rheumatoid_arthritis', 'other']))
+const giSymptomOptions = computed(() => props.glimConfig?.intake_or_malabsorption?.gi_symptoms || fallbackGiSymptomOptions)
+const nutritionImpactOptions = computed(() => props.glimConfig?.intake_or_malabsorption?.related_diseases || fallbackNutritionImpactOptions)
+const acuteDiseaseOptions = computed(() => props.glimConfig?.inflammation_or_disease_burden?.acute || diseaseOptions(['severe_infection', 'burn', 'trauma', 'brain_injury']))
+const malignantTumorOption = computed(() => (props.glimConfig?.inflammation_or_disease_burden?.chronic || diseaseOptions(['malignant_tumor'])).find((item) => item.id === 'malignant_tumor') || diseaseOptions(['malignant_tumor'])[0])
+const chronicDiseaseOptions = computed(() => (props.glimConfig?.inflammation_or_disease_burden?.chronic || diseaseOptions(['copd', 'heart_failure', 'ckd', 'chronic_liver', 'liver_cirrhosis', 'rheumatoid_arthritis', 'other'])).filter((item) => item.id !== 'malignant_tumor'))
 const malignantTumorSelected = computed(() => chronicDiseaseIds.value.includes('malignant_tumor'))
 const formReady = computed(() => Boolean(props.patient.age && props.patient.height && props.weights['0'] && props.weights['6'] && props.weights['12']))
 

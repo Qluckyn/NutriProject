@@ -156,5 +156,275 @@
       "nrs_score": 2,
       "glim_type": "chronic"
     }
-  ]
+  ],
+  "nrs2002": {
+    "diseases": [
+      {
+        "id": "liver_cirrhosis",
+        "name": "肝硬化",
+        "nrs_score": 1
+      },
+      {
+        "id": "copd",
+        "name": "慢性阻塞性肺病",
+        "nrs_score": 1
+      },
+      {
+        "id": "hemodialysis",
+        "name": "血液透析",
+        "nrs_score": 1
+      },
+      {
+        "id": "diabetes",
+        "name": "糖尿病",
+        "nrs_score": 1
+      },
+      {
+        "id": "general_tumor",
+        "name": "一般肿瘤",
+        "nrs_score": 1
+      },
+      {
+        "id": "abdominal_surgery",
+        "name": "腹部大手术",
+        "nrs_score": 2
+      },
+      {
+        "id": "stroke",
+        "name": "脑卒中",
+        "nrs_score": 2
+      },
+      {
+        "id": "severe_pneumonia",
+        "name": "重度肺炎",
+        "nrs_score": 2
+      },
+      {
+        "id": "hematologic_tumor",
+        "name": "血液系统肿瘤",
+        "nrs_score": 2
+      },
+      {
+        "id": "brain_injury",
+        "name": "颅脑损伤",
+        "nrs_score": 3
+      },
+      {
+        "id": "bone_marrow_transplant",
+        "name": "骨髓移植",
+        "nrs_score": 3
+      },
+      {
+        "id": "icu",
+        "name": "重症监护（APACHE>10）",
+        "nrs_score": 3
+      },
+      {
+        "id": "severe_infection",
+        "name": "严重感染",
+        "nrs_score": 2
+      },
+      {
+        "id": "burn",
+        "name": "烧伤",
+        "nrs_score": 2
+      },
+      {
+        "id": "trauma",
+        "name": "创伤",
+        "nrs_score": 2
+      },
+      {
+        "id": "short_bowel",
+        "name": "短肠综合征",
+        "nrs_score": 1
+      },
+      {
+        "id": "pancreatic_insufficiency",
+        "name": "胰腺功能不全",
+        "nrs_score": 1
+      },
+      {
+        "id": "post_bariatric",
+        "name": "减肥手术后",
+        "nrs_score": 1
+      },
+      {
+        "id": "esophageal_stricture",
+        "name": "食管狭窄",
+        "nrs_score": 1
+      },
+      {
+        "id": "gastroparesis",
+        "name": "胃轻瘫",
+        "nrs_score": 1
+      },
+      {
+        "id": "intestinal_obstruction",
+        "name": "肠梗阻",
+        "nrs_score": 1
+      },
+      {
+        "id": "heart_failure",
+        "name": "充血性心衰",
+        "nrs_score": 1
+      },
+      {
+        "id": "ckd",
+        "name": "慢性肾脏疾病",
+        "nrs_score": 1
+      },
+      {
+        "id": "chronic_liver",
+        "name": "慢性肝病（肝硬化/肝源性腹水）",
+        "nrs_score": 1
+      },
+      {
+        "id": "rheumatoid_arthritis",
+        "name": "类风湿关节炎",
+        "nrs_score": 1
+      },
+      {
+        "id": "malignant_tumor",
+        "name": "恶性肿瘤（癌症）",
+        "nrs_score": 2
+      }
+    ]
+  },
+  "glim": {
+    "intake_or_malabsorption": {
+      "gi_symptoms": [
+        {
+          "id": "dysphagia",
+          "name": "吞咽困难"
+        },
+        {
+          "id": "nausea_vomiting",
+          "name": "恶心、呕吐"
+        },
+        {
+          "id": "diarrhea",
+          "name": "腹泻"
+        },
+        {
+          "id": "constipation",
+          "name": "便秘"
+        },
+        {
+          "id": "abdominal_pain",
+          "name": "腹痛"
+        },
+        {
+          "id": "other",
+          "name": "其他"
+        }
+      ],
+      "related_diseases": [
+        {
+          "id": "short_bowel",
+          "name": "短肠综合征"
+        },
+        {
+          "id": "pancreatic_insufficiency",
+          "name": "胰腺功能不全"
+        },
+        {
+          "id": "post_bariatric",
+          "name": "减肥手术后"
+        },
+        {
+          "id": "esophageal_stricture",
+          "name": "食管狭窄"
+        },
+        {
+          "id": "gastroparesis",
+          "name": "胃轻瘫"
+        },
+        {
+          "id": "intestinal_obstruction",
+          "name": "肠梗阻"
+        },
+        {
+          "id": "diarrhea_or_steatorrhea",
+          "name": "腹泻或脂肪痢"
+        },
+        {
+          "id": "high_output_stoma",
+          "name": "排出量较大的肠道造口患者"
+        },
+        {
+          "id": "other",
+          "name": "其他"
+        }
+      ]
+    },
+    "inflammation_or_disease_burden": {
+      "acute": [
+        {
+          "id": "severe_infection",
+          "name": "严重感染"
+        },
+        {
+          "id": "burn",
+          "name": "烧伤"
+        },
+        {
+          "id": "trauma",
+          "name": "创伤"
+        },
+        {
+          "id": "brain_injury",
+          "name": "颅脑损伤"
+        }
+      ],
+      "chronic": [
+        {
+          "id": "malignant_tumor",
+          "name": "恶性肿瘤（癌症）"
+        },
+        {
+          "id": "copd",
+          "name": "慢性阻塞性肺病"
+        },
+        {
+          "id": "heart_failure",
+          "name": "充血性心衰"
+        },
+        {
+          "id": "ckd",
+          "name": "慢性肾脏疾病"
+        },
+        {
+          "id": "chronic_liver",
+          "name": "慢性肝病（肝硬化/肝源性腹水）"
+        },
+        {
+          "id": "liver_cirrhosis",
+          "name": "肝硬化"
+        },
+        {
+          "id": "rheumatoid_arthritis",
+          "name": "类风湿关节炎"
+        },
+        {
+          "id": "other",
+          "name": "其他"
+        }
+      ],
+      "inflammatory_markers": [
+        {
+          "id": "crp",
+          "name": "CRP",
+          "unit": "mg/L",
+          "threshold": 5
+        },
+        {
+          "id": "il6",
+          "name": "IL-6C",
+          "unit": "pg/mL",
+          "threshold": 7
+        }
+      ]
+    }
+  }
 }

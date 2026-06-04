@@ -48,6 +48,8 @@ const showErrors = ref(false)
 const clearToken = ref(0)
 const resetToken = ref(0)
 const diseases = ref([])
+const nrsDiseases = ref([])
+const glimConfig = ref(null)
 const diseaseError = ref('')
 const imageError = ref('')
 const imageLoading = ref(false)
@@ -158,6 +160,8 @@ onMounted(async () => {
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(data.detail || '疾病列表加载失败。')
     diseases.value = data.diseases || []
+    nrsDiseases.value = data.nrs2002?.diseases || data.diseases || []
+    glimConfig.value = data.glim || null
   } catch (error) {
     diseaseError.value = error.message || '无法连接后端服务，疾病列表暂不可用。'
   }
@@ -376,8 +380,8 @@ function percent(value) {
 
     <section v-if="currentStep === 1" class="step-panel">
       <WeightRecordTable :key="`weight-${clearToken}`" :model-value="weightRecords" :show-errors="showErrors" :visible-months="step1VisibleMonths" :required-months="step1RequiredMonths" @update:model-value="updateWeights" />
-      <NRS2002Form ref="nrsFormRef" :patient="patientInfo" :weights="weightRecords" :intake-last-week="intakeLastWeek" :diseases="diseases" :show-submit="false" @validation-failed="markValidationFailed" @assessed="setNrsResult" />
       <IntakeRecord :key="`intake-${clearToken}`" :weeks="intakeRecords" :show-errors="showErrors" @update:weeks="updateWeeks" @update:last-week="updateLastWeek" />
+      <NRS2002Form ref="nrsFormRef" :patient="patientInfo" :weights="weightRecords" :intake-last-week="intakeLastWeek" :diseases="nrsDiseases" :show-submit="false" @validation-failed="markValidationFailed" @assessed="setNrsResult" />
       <div class="step-actions">
         <button class="primary-button" type="button" :disabled="!step1Ready" @click="submitNrs">开始评估</button>
         <button v-if="nrs2002Result" class="primary-button" type="button" @click="currentStep = 2">下一步</button>
@@ -433,7 +437,7 @@ function percent(value) {
         </div>
       </section>
       <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="step4VisibleMonths" :required-months="step4RequiredMonths" :readonly-months="[0]" @update:model-value="updateWeights" />
-      <GLIMForm ref="glimFormRef" :patient="patientInfo" :weights="weightRecords" :diseases="diseases" :show-submit="false" @validation-failed="markValidationFailed" @assessed="setGlimResult" />
+      <GLIMForm ref="glimFormRef" :patient="patientInfo" :weights="weightRecords" :diseases="diseases" :glim-config="glimConfig" :show-submit="false" @validation-failed="markValidationFailed" @assessed="setGlimResult" />
       <div class="step-actions split-actions">
         <button class="secondary-button" type="button" @click="goPrevious">上一步</button>
         <span class="action-spacer"></span>

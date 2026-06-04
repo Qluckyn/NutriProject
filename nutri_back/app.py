@@ -232,7 +232,7 @@ DISEASES_PATH = "./diseases.json"
 REQUIRED_NRS_MONTHS = ("0", "1", "2", "3")
 REQUIRED_GLIM_MONTHS = ("0", "6", "12")
 
-diseases_cache: Dict[str, List[Dict[str, Any]]] = {"diseases": []}
+diseases_cache: Dict[str, Any] = {"diseases": [], "nrs2002": {"diseases": []}, "glim": {}}
 
 GLIM_GI_SYMPTOM_LABELS = {
     "dysphagia": "吞咽困难",
@@ -265,6 +265,62 @@ GLIM_CHRONIC_DISEASE_IDS = {
     "other",
 }
 GLIM_CHRONIC_DISEASE_LABELS = {"other": "其他"}
+
+
+def normalize_diseases_config(data: Dict[str, Any]) -> Dict[str, Any]:
+    legacy = data.get("diseases", [])
+    if data.get("nrs2002") and data.get("glim"):
+        return {
+            "diseases": legacy,
+            "nrs2002": data.get("nrs2002", {"diseases": legacy}),
+            "glim": data.get("glim", {}),
+        }
+    return {
+        "diseases": legacy,
+        "nrs2002": {
+            "diseases": [
+                {"id": item["id"], "name": item["name"], "nrs_score": item.get("nrs_score", 0)}
+                for item in legacy
+            ]
+        },
+        "glim": {
+            "intake_or_malabsorption": {
+                "gi_symptoms": [{"id": key, "name": value} for key, value in GLIM_GI_SYMPTOM_LABELS.items()],
+                "related_diseases": [{"id": key, "name": value} for key, value in GLIM_NUTRITION_IMPACT_LABELS.items()],
+            },
+            "inflammation_or_disease_burden": {
+                "acute": [item for item in legacy if item.get("id") in GLIM_ACUTE_DISEASE_IDS],
+                "chronic": [
+                    item for item in legacy if item.get("id") in GLIM_CHRONIC_DISEASE_IDS
+                ] + [{"id": "other", "name": "其他"}],
+                "inflammatory_markers": [
+                    {"id": "crp", "name": "CRP", "unit": "mg/L", "threshold": 5},
+                    {"id": "il6", "name": "IL-6C", "unit": "pg/mL", "threshold": 7},
+                ],
+            },
+        },
+    }
+
+
+def option_map(items: List[Dict[str, Any]]) -> Dict[str, str]:
+    return {item["id"]: item["name"] for item in items}
+
+
+def get_nrs_disease_map() -> Dict[str, Dict[str, Any]]:
+    items = diseases_cache.get("nrs2002", {}).get("diseases", [])
+    return {item["id"]: item for item in items}
+
+
+def get_glim_config() -> Dict[str, Any]:
+    return diseases_cache.get("glim", {})
+
+
+def get_glim_intake_config() -> Dict[str, Any]:
+    return get_glim_config().get("intake_or_malabsorption", {})
+
+
+def get_glim_inflammation_config() -> Dict[str, Any]:
+    return get_glim_config().get("inflammation_or_disease_burden", {})
 
 
 class NRS2002Request(BaseModel):
@@ -328,7 +384,7 @@ def load_diseases_config() -> None:
     global diseases_cache
     with open(DISEASES_PATH, "r", encoding="utf-8") as file:
         data = json.load(file)
-    diseases_cache = {"diseases": data.get("diseases", [])}
+    diseases_cache = normalize_diseases_config(data)
 
 
 def get_disease_map() -> Dict[str, Dict[str, Any]]:
@@ -413,7 +469,7 @@ def nrs_nutrition_score(payload: NRS2002Request) -> Tuple[int, Dict[str, float],
 
 
 def disease_score_for_nrs(disease_ids: List[str]) -> int:
-    disease_map = get_disease_map()
+    disease_map = get_nrs_disease_map()
     if not disease_ids:
         return 0
     return max(int(disease_map[item].get("nrs_score", 0)) for item in disease_ids)
@@ -427,7 +483,9 @@ def get_diseases() -> Dict[str, object]:
 @app.post("/assess/nrs2002")
 def assess_nrs2002(payload: NRS2002Request) -> Dict[str, object]:
     validate_weight_records(payload.weight_records, REQUIRED_NRS_MONTHS)
-    validate_disease_ids(payload.disease_ids)
+    unknown_nrs_ids = [item for item in payload.disease_ids if item not in get_nrs_disease_map()]
+    if unknown_nrs_ids:
+        raise_zh_422("NRS-2002疾病id不存在：" + "、".join(unknown_nrs_ids))
 
     nutrition_score, loss_details, bmi = nrs_nutrition_score(payload)
     disease_score = disease_score_for_nrs(payload.disease_ids)
@@ -527,9 +585,13 @@ def assess_mna_sf(payload: MNASFRequest) -> Dict[str, object]:
 def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
     validate_weight_records(payload.weight_records, REQUIRED_GLIM_MONTHS)
     disease_map = get_disease_map()
-    all_disease_ids = set(payload.disease_ids) | set(payload.acute_disease_ids) | set(payload.chronic_disease_ids)
-    disease_condition_ids = {item for item in payload.nutrition_impact_conditions if item in disease_map}
-    validate_disease_ids([item for item in all_disease_ids | disease_condition_ids if item in disease_map])
+    intake_config = get_glim_intake_config()
+    inflammation_config = get_glim_inflammation_config()
+    gi_labels = option_map(intake_config.get("gi_symptoms", []))
+    nutrition_impact_labels = option_map(intake_config.get("related_diseases", []))
+    acute_labels = option_map(inflammation_config.get("acute", []))
+    chronic_labels = option_map(inflammation_config.get("chronic", []))
+    validate_disease_ids([item for item in payload.disease_ids if item in disease_map])
     if payload.muscle_loss not in {"none", "mild_moderate", "severe"}:
         raise_zh_422("肌肉减少程度必须为 none、mild_moderate 或 severe。")
 
@@ -559,26 +621,26 @@ def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
     if payload.any_intake_reduction_over_2w:
         intake_reasons.append("任意摄入量减少超过2周")
     intake_reasons.extend(
-        GLIM_GI_SYMPTOM_LABELS[item]
+        gi_labels[item]
         for item in payload.gi_symptoms
-        if item in GLIM_GI_SYMPTOM_LABELS
+        if item in gi_labels
     )
     intake_reasons.extend(
-        GLIM_NUTRITION_IMPACT_LABELS[item]
+        nutrition_impact_labels[item]
         for item in payload.nutrition_impact_conditions
-        if item in GLIM_NUTRITION_IMPACT_LABELS
+        if item in nutrition_impact_labels
     )
     if intake_reasons:
         etiological.append("摄食减少或消化吸收障碍：" + "、".join(dict.fromkeys(intake_reasons)))
 
     inflammation_reasons = []
     for disease_id in payload.acute_disease_ids:
-        if disease_id in GLIM_ACUTE_DISEASE_IDS and disease_id in disease_map:
-            inflammation_reasons.append("急性疾病或损伤：" + disease_map[disease_id]["name"])
+        if disease_id in acute_labels:
+            inflammation_reasons.append("急性疾病或损伤：" + acute_labels[disease_id])
     for disease_id in payload.chronic_disease_ids:
-        if disease_id not in GLIM_CHRONIC_DISEASE_IDS:
+        if disease_id not in chronic_labels:
             continue
-        disease_name = disease_map[disease_id]["name"] if disease_id in disease_map else GLIM_CHRONIC_DISEASE_LABELS.get(disease_id, disease_id)
+        disease_name = chronic_labels[disease_id]
         if disease_id == "malignant_tumor":
             cancer_details = []
             if payload.cancer_site:
@@ -593,8 +655,8 @@ def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
         inflammation_reasons.append("慢性或反复发作疾病：" + disease_name)
     # 兼容旧请求：旧 disease_ids 仅在属于图片表单列出的急/慢性疾病时进入病因标准。
     for disease_id in payload.disease_ids:
-        if disease_id in GLIM_ACUTE_DISEASE_IDS and disease_id in disease_map:
-            inflammation_reasons.append("急性疾病或损伤：" + disease_map[disease_id]["name"])
+        if disease_id in acute_labels:
+            inflammation_reasons.append("急性疾病或损伤：" + acute_labels[disease_id])
         elif disease_id in GLIM_CHRONIC_DISEASE_IDS and disease_id in disease_map:
             inflammation_reasons.append("慢性或反复发作疾病：" + disease_map[disease_id]["name"])
     if payload.crp != -1 and payload.crp >= 5:

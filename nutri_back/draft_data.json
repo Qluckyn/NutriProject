@@ -5,57 +5,54 @@
     "name": "李琳",
     "age": "68",
     "gender": "female",
-    "height": "159.9",
+    "height": "160",
     "calfCircumference": ""
   },
   "weight_records": {
     "0": "55",
-    "1": "57",
-    "2": "58",
-    "3": "59",
+    "1": "56",
+    "2": "57",
+    "3": "58",
     "4": "",
     "5": "",
-    "6": "61",
+    "6": "60",
     "7": "",
     "8": "",
     "9": "",
     "10": "",
     "11": "",
-    "12": "63"
+    "12": "61.9"
   },
   "intake_records": {
     "1": "",
     "2": "",
     "3": "",
-    "4": "70"
+    "4": "30"
   },
-  "nrs2002_form": {},
+  "nrs2002_form": {
+    "generalConditionImpaired": "false",
+    "selectedDiseaseIds": [
+      "diabetes",
+      "ckd"
+    ]
+  },
   "mnasf_form": {},
   "glim_form": {
     "muscleLoss": "mild_moderate",
     "intakeUnder50Over1w": true,
-    "anyIntakeReductionOver2w": true,
+    "anyIntakeReductionOver2w": false,
     "giSymptoms": [
-      "nausea_vomiting",
-      "abdominal_pain",
-      "other"
+      "nausea_vomiting"
     ],
-    "nutritionImpactConditions": [
-      "short_bowel",
-      "post_bariatric",
-      "other"
-    ],
-    "acuteDiseaseIds": [
-      "trauma",
-      "burn"
-    ],
+    "nutritionImpactConditions": [],
+    "acuteDiseaseIds": [],
     "chronicDiseaseIds": [
       "malignant_tumor",
       "copd"
     ],
-    "cancerSite": "kk",
-    "cancerStage": "早期",
-    "cancerMalnutritionRelated": "true",
+    "cancerSite": "",
+    "cancerStage": "",
+    "cancerMalnutritionRelated": "",
     "crp": "",
     "il6": ""
   },
@@ -102,20 +99,20 @@
   },
   "nrs2002_result": {
     "tool": "NRS-2002",
-    "total_score": 2,
+    "total_score": 3,
     "nutrition_score": 2,
-    "disease_score": 0,
+    "disease_score": 1,
     "age_score": 0,
-    "bmi": 21.5113,
+    "bmi": 21.4844,
     "weight_loss_details": {
-      "1m_loss_pct": 3.5088,
-      "2m_loss_pct": 5.1724,
-      "3m_loss_pct": 6.7797
+      "1m_loss_pct": 1.7857,
+      "2m_loss_pct": 3.5088,
+      "3m_loss_pct": 5.1724
     },
-    "has_risk": false,
-    "risk_level": "暂无营养风险",
-    "recommendation": "建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。",
-    "message": "NRS-2002总分为2分，判定为：暂无营养风险。建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。"
+    "has_risk": true,
+    "risk_level": "存在营养风险",
+    "recommendation": "建议启动营养支持流程，结合临床情况完善膳食评估、实验室检查和个体化营养干预。",
+    "message": "NRS-2002总分为3分，判定为：存在营养风险。建议启动营养支持流程，结合临床情况完善膳食评估、实验室检查和个体化营养干预。"
   },
   "mnasf_result": null,
   "glim_result": {
@@ -128,12 +125,12 @@
       "肌肉减少"
     ],
     "etiological_criteria_triggered": [
-      "摄食减少或消化吸收障碍：摄入量≤50%能量需求超过一周、任意摄入量减少超过2周、恶心、呕吐、腹痛、其他慢性胃肠症状、短肠综合征、减肥手术后、其他相关消化吸收疾病",
-      "炎症或疾病负担：急性疾病或损伤：创伤、急性疾病或损伤：烧伤、慢性或反复发作疾病：恶性肿瘤（癌症） [具体部位kk，癌症分期早期，疾病相关性营养不良病因是]、慢性或反复发作疾病：慢性阻塞性肺病"
+      "摄食减少或消化吸收障碍：摄入量≤50%能量需求超过一周、恶心、呕吐",
+      "炎症或疾病负担：慢性或反复发作疾病：恶性肿瘤（癌症）、慢性或反复发作疾病：慢性阻塞性肺病"
     ],
-    "bmi": 21.5113,
-    "weight_loss_6m_pct": 9.8361,
-    "weight_loss_over6m_pct": 12.6984,
+    "bmi": 21.4844,
+    "weight_loss_6m_pct": 8.3333,
+    "weight_loss_over6m_pct": 11.147,
     "severity": "中度营养不良（1期）",
     "message": "GLIM标准提示营养不良，严重程度为中度营养不良（1期）。"
   }
