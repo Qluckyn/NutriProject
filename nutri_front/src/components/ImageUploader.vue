@@ -30,6 +30,8 @@ const previewIsObjectUrl = ref(false)
 const isDragging = ref(false)
 
 const supportedTypes = ['image/jpeg', 'image/png', 'image/bmp']
+const MAX_IMAGE_SIDE = 1024
+const JPEG_QUALITY = 0.9
 
 function restoreDraftPreview() {
   const imageInfo = draftContext?.draftData.images?.[props.viewKey]
@@ -41,8 +43,55 @@ function restoreDraftPreview() {
   }
 }
 
+function compressedFilename(file) {
+  const baseName = (file.name || 'upload').replace(/\.[^.]+$/, '')
+  return `${baseName}.jpg`
+}
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('图片读取失败，请重新选择图片。'))
+    }
+    image.src = url
+  })
+}
+
+async function prepareUploadImage(file) {
+  const image = await loadImage(file)
+  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(image.naturalWidth, image.naturalHeight))
+  const width = Math.max(1, Math.round(image.naturalWidth * scale))
+  const height = Math.max(1, Math.round(image.naturalHeight * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d')
+  context.drawImage(image, 0, 0, width, height)
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('图片处理失败，请重新选择图片。'))
+          return
+        }
+        resolve(new File([blob], compressedFilename(file), { type: 'image/jpeg' }))
+      },
+      'image/jpeg',
+      JPEG_QUALITY,
+    )
+  })
+}
+
 async function saveDraftImage(file) {
-  if (!draftContext) return
+  if (!draftContext) return false
   const formData = new FormData()
   formData.append('file', file)
   try {
@@ -53,8 +102,11 @@ async function saveDraftImage(file) {
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(data.detail || '图片草稿保存失败。')
     draftContext.draftData.images[props.viewKey] = { filename: file.name, saved: true }
+    return true
   } catch (error) {
+    draftContext.draftData.images[props.viewKey] = null
     emit('error', error.message || `${props.title}图片草稿保存失败。`)
+    return false
   }
 }
 
@@ -67,11 +119,32 @@ async function handleFile(file) {
     return
   }
 
+  let uploadFile
+  try {
+    // 保守处理：最长边1024、JPEG质量0.9；不裁剪、不改变比例，兼顾速度和模型稳定性。
+    uploadFile = await prepareUploadImage(file)
+  } catch (error) {
+    emit('error', error.message || `${props.title}图片处理失败，请重新上传。`)
+    return
+  }
+
   clearPreview()
-  previewUrl.value = URL.createObjectURL(file)
+  previewUrl.value = URL.createObjectURL(uploadFile)
   previewIsObjectUrl.value = true
-  emit('change', props.viewKey, file)
-  await saveDraftImage(file)
+  emit('change', props.viewKey, null)
+
+  if (draftContext) {
+    // 替换图片时先清空该视角的草稿状态，避免预测接口读到旧图片。
+    draftContext.draftData.images[props.viewKey] = null
+    draftContext.beginDraftImageUpload?.()
+  }
+
+  try {
+    const saved = await saveDraftImage(uploadFile)
+    emit('change', props.viewKey, saved ? uploadFile : null)
+  } finally {
+    draftContext?.endDraftImageUpload?.()
+  }
 }
 
 function openFileDialog() {

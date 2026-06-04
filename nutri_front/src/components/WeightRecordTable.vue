@@ -1,5 +1,5 @@
 <script setup>
-import { inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -10,16 +10,31 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  visibleMonths: {
+    type: Array,
+    default: () => Array.from({ length: 13 }, (_, index) => index),
+  },
+  requiredMonths: {
+    type: Array,
+    default: () => ['0', '1', '2', '3'],
+  },
+  readonlyMonths: {
+    type: Array,
+    default: () => [],
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
 const draftContext = inject('draftContext', null)
 const isRestoring = ref(false)
-const months = Array.from({ length: 13 }, (_, index) => String(index))
-const requiredMonths = ['0', '1', '2', '3']
 
-// 表格保留0-12个月的完整记录，提交时由各量表按需校验。
+const visibleMonthKeys = computed(() => props.visibleMonths.map((month) => String(month)))
+const requiredMonthKeys = computed(() => props.requiredMonths.map((month) => String(month)))
+const readonlyMonthKeys = computed(() => props.readonlyMonths.map((month) => String(month)))
+
+// 只更新当前月份字段，但始终向父级回传完整体重对象，未展示月份不会被清空。
 function updateWeight(month, value) {
+  if (readonlyMonthKeys.value.includes(month)) return
   emit('update:modelValue', {
     ...props.modelValue,
     [month]: value,
@@ -37,7 +52,11 @@ function restoreFromDraft() {
 }
 
 function missingRequired(month) {
-  return props.showErrors && requiredMonths.includes(month) && !props.modelValue[month]
+  return props.showErrors && requiredMonthKeys.value.includes(month) && !props.modelValue[month]
+}
+
+function isReadonly(month) {
+  return readonlyMonthKeys.value.includes(month)
 }
 
 onMounted(() => {
@@ -69,7 +88,7 @@ watch(
         <p class="section-kicker">Weight</p>
         <h2>月度体重记录</h2>
       </div>
-      <span class="muted-note">0、1、2、3个月为常用必填节点，6、12个月为选填</span>
+      <span class="muted-note">仅显示当前步骤需要的体重节点，其他月份数据会保留</span>
     </div>
 
     <div class="weight-table-wrap">
@@ -82,7 +101,7 @@ watch(
           </tr>
         </thead>
         <tbody>
-          <tr v-for="month in months" :key="month" :class="{ invalid: missingRequired(month) }">
+          <tr v-for="month in visibleMonthKeys" :key="month" :class="{ invalid: missingRequired(month) }">
             <td>{{ month }}个月</td>
             <td>
               <input
@@ -91,13 +110,16 @@ watch(
                 min="0"
                 step="0.1"
                 placeholder="kg"
+                :disabled="isReadonly(month)"
                 @input="updateWeight(month, $event.target.value)"
               />
             </td>
             <td>
-              <span class="require-pill" :class="requiredMonths.includes(month) ? 'required' : 'optional'">
-                {{ requiredMonths.includes(month) ? '必填' : '选填' }}
+              <span class="require-pill" :class="requiredMonthKeys.includes(month) ? 'required' : 'optional'">
+                <strong v-if="requiredMonthKeys.includes(month)">*</strong>
+                {{ requiredMonthKeys.includes(month) ? '必填' : '选填' }}
               </span>
+              <small v-if="isReadonly(month)">已锁定</small>
             </td>
           </tr>
         </tbody>

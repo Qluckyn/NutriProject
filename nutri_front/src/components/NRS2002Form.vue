@@ -7,9 +7,10 @@ const props = defineProps({
   weights: { type: Object, required: true },
   intakeLastWeek: { type: [String, Number], required: true },
   diseases: { type: Array, default: () => [] },
+  showSubmit: { type: Boolean, default: true },
 })
 
-const emit = defineEmits(['validation-failed'])
+const emit = defineEmits(['validation-failed', 'assessed'])
 const draftContext = inject('draftContext', null)
 const isRestoring = ref(false)
 const generalConditionImpaired = ref('false')
@@ -81,6 +82,7 @@ async function submit() {
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(data.detail || 'NRS-2002评估失败，请稍后重试。')
     result.value = data
+    emit('assessed', data)
   } catch (error) {
     errorMessage.value = error.message || '网络错误，请确认后端服务已启动。'
   } finally {
@@ -88,8 +90,11 @@ async function submit() {
   }
 }
 
+defineExpose({ submit })
+
 function resetResult() {
   result.value = null
+  emit('assessed', null)
   errorMessage.value = ''
   touched.value = false
 }
@@ -121,7 +126,7 @@ watch(result, (value) => {
       <div class="field-block"><span>全身情况是否受损</span><small>因疾病导致一般状态差，如虚弱、卧床等</small><div class="segmented-options"><label><input v-model="generalConditionImpaired" type="radio" value="true" />是</label><label><input v-model="generalConditionImpaired" type="radio" value="false" />否</label></div></div>
       <div class="disease-section"><h3>疾病严重程度</h3><div v-for="group in groupedDiseases" :key="group.score" class="disease-group"><h4>{{ group.score }}分疾病</h4><label v-for="item in group.items" :key="item.id" class="check-option"><input v-model="selectedDiseaseIds" type="checkbox" :value="item.id" /><span>{{ item.name }}</span></label></div></div>
       <p v-if="errorMessage" class="error-alert compact-alert">{{ errorMessage }}</p>
-      <button class="primary-button" type="button" :disabled="loading || !formReady" @click="submit"><span v-if="loading" class="spinner" aria-hidden="true"></span>{{ loading ? '评估中...' : '开始评估 - NRS-2002' }}</button>
+      <button v-if="showSubmit" class="primary-button" type="button" :disabled="loading || !formReady" @click="submit"><span v-if="loading" class="spinner" aria-hidden="true"></span>{{ loading ? '评估中...' : '开始评估 - NRS-2002' }}</button>
       <p v-if="touched && !formReady" class="field-error">仍有必填项未完成。</p>
     </div>
     <section v-if="result" class="assessment-result" :class="result.has_risk ? 'risk' : 'good'"><div class="score-hero"><span>总分</span><strong>{{ result.total_score }}</strong><em>{{ result.risk_level }}</em></div><div class="result-metrics three"><div><span>营养状态受损</span><strong>{{ result.nutrition_score }}分</strong></div><div><span>疾病严重程度</span><strong>{{ result.disease_score }}分</strong></div><div><span>年龄</span><strong>{{ result.age_score }}分</strong></div></div><div class="result-metrics four"><div><span>1个月丢失</span><strong>{{ result.weight_loss_details['1m_loss_pct'] }}%</strong></div><div><span>2个月丢失</span><strong>{{ result.weight_loss_details['2m_loss_pct'] }}%</strong></div><div><span>3个月丢失</span><strong>{{ result.weight_loss_details['3m_loss_pct'] }}%</strong></div><div><span>BMI</span><strong>{{ result.bmi }}</strong></div></div><p class="message-text">{{ result.recommendation }}</p><p class="message-text">{{ result.message }}</p><button class="secondary-button" type="button" @click="resetResult">重新评估</button></section>

@@ -234,6 +234,38 @@ REQUIRED_GLIM_MONTHS = ("0", "6", "12")
 
 diseases_cache: Dict[str, List[Dict[str, Any]]] = {"diseases": []}
 
+GLIM_GI_SYMPTOM_LABELS = {
+    "dysphagia": "吞咽困难",
+    "nausea_vomiting": "恶心、呕吐",
+    "diarrhea": "腹泻",
+    "constipation": "便秘",
+    "abdominal_pain": "腹痛",
+    "other": "其他慢性胃肠症状",
+}
+GLIM_NUTRITION_IMPACT_LABELS = {
+    "short_bowel": "短肠综合征",
+    "pancreatic_insufficiency": "胰腺功能不全",
+    "post_bariatric": "减肥手术后",
+    "esophageal_stricture": "食管狭窄",
+    "gastroparesis": "胃轻瘫",
+    "intestinal_obstruction": "肠梗阻",
+    "diarrhea_or_steatorrhea": "腹泻或脂肪痢",
+    "high_output_stoma": "排出量较大的肠道造口",
+    "other": "其他相关消化吸收疾病",
+}
+GLIM_ACUTE_DISEASE_IDS = {"severe_infection", "burn", "trauma", "brain_injury"}
+GLIM_CHRONIC_DISEASE_IDS = {
+    "malignant_tumor",
+    "copd",
+    "heart_failure",
+    "ckd",
+    "chronic_liver",
+    "liver_cirrhosis",
+    "rheumatoid_arthritis",
+    "other",
+}
+GLIM_CHRONIC_DISEASE_LABELS = {"other": "其他"}
+
 
 class NRS2002Request(BaseModel):
     age: int = Field(..., ge=0, le=130)
@@ -261,8 +293,18 @@ class GLIMRequest(BaseModel):
     height: float = Field(..., gt=0)
     weight_records: Dict[str, float] = Field(...)
     muscle_loss: str = Field(...)
+    # 兼容旧请求；严格判定优先使用下面与图片表单一致的细项字段。
     disease_ids: List[str] = Field(default_factory=list)
-    reduced_intake: bool = Field(...)
+    reduced_intake: bool = Field(False)
+    intake_under_50_over_1w: bool = Field(False)
+    any_intake_reduction_over_2w: bool = Field(False)
+    gi_symptoms: List[str] = Field(default_factory=list)
+    nutrition_impact_conditions: List[str] = Field(default_factory=list)
+    acute_disease_ids: List[str] = Field(default_factory=list)
+    chronic_disease_ids: List[str] = Field(default_factory=list)
+    cancer_site: str = Field("")
+    cancer_stage: str = Field("")
+    cancer_malnutrition_related: Optional[bool] = Field(None)
     crp: float = Field(-1)
     il6: float = Field(-1)
 
@@ -336,9 +378,11 @@ def nrs_nutrition_score(payload: NRS2002Request) -> Tuple[int, Dict[str, float],
     loss_3m = calc_loss_pct(records, "3")
 
     weight_score = 0
-    if loss_1m > 5 and payload.general_condition_impaired:
+    # if loss_1m > 5 and payload.general_condition_impaired:
+    if loss_1m > 5:
         weight_score = 3
-    elif loss_2m > 5 and payload.general_condition_impaired:
+    # elif loss_2m > 5 and payload.general_condition_impaired:
+    elif loss_2m > 5:
         weight_score = 2
     elif loss_3m > 5:
         weight_score = 1
@@ -389,6 +433,7 @@ def assess_nrs2002(payload: NRS2002Request) -> Dict[str, object]:
     disease_score = disease_score_for_nrs(payload.disease_ids)
     age_score = 1 if payload.age >= 70 else 0
     total_score = nutrition_score + disease_score + age_score
+    # NRS-2002判定规则：总分>=3为存在营养风险，否则暂无营养风险。
     has_risk = total_score >= 3
     risk_level = "存在营养风险" if has_risk else "暂无营养风险"
     recommendation = (
@@ -481,11 +526,13 @@ def assess_mna_sf(payload: MNASFRequest) -> Dict[str, object]:
 @app.post("/assess/glim")
 def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
     validate_weight_records(payload.weight_records, REQUIRED_GLIM_MONTHS)
-    validate_disease_ids(payload.disease_ids)
+    disease_map = get_disease_map()
+    all_disease_ids = set(payload.disease_ids) | set(payload.acute_disease_ids) | set(payload.chronic_disease_ids)
+    disease_condition_ids = {item for item in payload.nutrition_impact_conditions if item in disease_map}
+    validate_disease_ids([item for item in all_disease_ids | disease_condition_ids if item in disease_map])
     if payload.muscle_loss not in {"none", "mild_moderate", "severe"}:
         raise_zh_422("肌肉减少程度必须为 none、mild_moderate 或 severe。")
 
-    disease_map = get_disease_map()
     bmi = calc_bmi(payload.weight_records["0"], payload.height)
     loss_6m = calc_loss_pct(payload.weight_records, "6")
     loss_over6m = calc_loss_pct(payload.weight_records, "12")
@@ -499,15 +546,63 @@ def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
         phenotypic.append("肌肉减少")
 
     etiological = []
-    if payload.reduced_intake:
-        etiological.append("摄食减少或消化吸收障碍")
-    selected_diseases = [disease_map[item] for item in payload.disease_ids]
-    if any(item.get("glim_type") in {"acute", "chronic"} for item in selected_diseases):
-        etiological.append("炎症或疾病负担")
+    intake_reasons = []
+    if payload.reduced_intake and not (
+        payload.intake_under_50_over_1w
+        or payload.any_intake_reduction_over_2w
+        or payload.gi_symptoms
+        or payload.nutrition_impact_conditions
+    ):
+        intake_reasons.append("摄食减少或消化吸收障碍")
+    if payload.intake_under_50_over_1w:
+        intake_reasons.append("摄入量≤50%能量需求超过一周")
+    if payload.any_intake_reduction_over_2w:
+        intake_reasons.append("任意摄入量减少超过2周")
+    intake_reasons.extend(
+        GLIM_GI_SYMPTOM_LABELS[item]
+        for item in payload.gi_symptoms
+        if item in GLIM_GI_SYMPTOM_LABELS
+    )
+    intake_reasons.extend(
+        GLIM_NUTRITION_IMPACT_LABELS[item]
+        for item in payload.nutrition_impact_conditions
+        if item in GLIM_NUTRITION_IMPACT_LABELS
+    )
+    if intake_reasons:
+        etiological.append("摄食减少或消化吸收障碍：" + "、".join(dict.fromkeys(intake_reasons)))
+
+    inflammation_reasons = []
+    for disease_id in payload.acute_disease_ids:
+        if disease_id in GLIM_ACUTE_DISEASE_IDS and disease_id in disease_map:
+            inflammation_reasons.append("急性疾病或损伤：" + disease_map[disease_id]["name"])
+    for disease_id in payload.chronic_disease_ids:
+        if disease_id not in GLIM_CHRONIC_DISEASE_IDS:
+            continue
+        disease_name = disease_map[disease_id]["name"] if disease_id in disease_map else GLIM_CHRONIC_DISEASE_LABELS.get(disease_id, disease_id)
+        if disease_id == "malignant_tumor":
+            cancer_details = []
+            if payload.cancer_site:
+                cancer_details.append("具体部位" + payload.cancer_site)
+            if payload.cancer_stage:
+                cancer_details.append("癌症分期" + payload.cancer_stage)
+            if payload.cancer_malnutrition_related is not None:
+                cancer_details.append("疾病相关性营养不良病因" + ("是" if payload.cancer_malnutrition_related else "否"))
+            suffix = " [" + "，".join(cancer_details) + "]" if cancer_details else ""
+            inflammation_reasons.append("慢性或反复发作疾病：" + disease_name + suffix)
+            continue
+        inflammation_reasons.append("慢性或反复发作疾病：" + disease_name)
+    # 兼容旧请求：旧 disease_ids 仅在属于图片表单列出的急/慢性疾病时进入病因标准。
+    for disease_id in payload.disease_ids:
+        if disease_id in GLIM_ACUTE_DISEASE_IDS and disease_id in disease_map:
+            inflammation_reasons.append("急性疾病或损伤：" + disease_map[disease_id]["name"])
+        elif disease_id in GLIM_CHRONIC_DISEASE_IDS and disease_id in disease_map:
+            inflammation_reasons.append("慢性或反复发作疾病：" + disease_map[disease_id]["name"])
     if payload.crp != -1 and payload.crp >= 5:
-        etiological.append("CRP升高")
+        inflammation_reasons.append("炎症状态指标：CRP升高")
     if payload.il6 != -1 and payload.il6 >= 7:
-        etiological.append("IL-6升高")
+        inflammation_reasons.append("炎症状态指标：IL-6C升高")
+    if inflammation_reasons:
+        etiological.append("炎症或疾病负担：" + "、".join(dict.fromkeys(inflammation_reasons)))
 
     phenotypic_met = bool(phenotypic)
     etiological_met = bool(etiological)
@@ -661,9 +756,10 @@ async def save_draft_image(view: str, file: UploadFile = File(...)) -> Dict[str,
         ensure_draft_view(view)
         validate_image_file(file, view)
         content = await file.read()
+        # 后端只统一为RGB三通道并保存，真正的Resize/CenterCrop仍由模型transform完成。
         image = Image.open(io.BytesIO(content)).convert("RGB")
         Path(DRAFT_IMAGE_DIR).mkdir(parents=True, exist_ok=True)
-        image.save(draft_image_path(view), format="JPEG", quality=95)
+        image.save(draft_image_path(view), format="JPEG", quality=90, optimize=True)
 
         draft = read_draft_file()
         images = draft.get("images") or {"front": None, "left": None, "right": None}
@@ -711,3 +807,42 @@ def delete_draft_image(view: str) -> Dict[str, object]:
         raise
     except Exception as exc:
         draft_500("删除草稿图片失败", exc)
+
+
+@app.post("/predict/draft")
+def predict_from_draft_images() -> Dict[str, object]:
+    """直接使用已保存的草稿图片进行面部筛查，避免前端在预测时二次上传图片。"""
+    try:
+        draft = read_draft_file()
+        images = draft.get("images") or {}
+        views_used: List[str] = []
+        per_view_scores: Dict[str, Dict[str, float]] = {}
+
+        for view_name in ("front", "left", "right"):
+            image_info = images.get(view_name)
+            image_path = draft_image_path(view_name)
+            if not image_info or not image_info.get("saved") or not image_path.exists():
+                continue
+            image = Image.open(image_path).convert("RGB")
+            per_view_scores[view_name] = predict_one_view(image)
+            views_used.append(view_name)
+
+        if not views_used:
+            raise HTTPException(status_code=400, detail="请至少先上传并保存一张面部图片。")
+
+        prediction, mal_prob, normal_prob = aggregate_scores(per_view_scores)
+        confidence = max(mal_prob, normal_prob)
+        return {
+            "prediction": prediction,
+            "malnourished_probability": round4(mal_prob),
+            "normal_probability": round4(normal_prob),
+            "confidence": round4(confidence),
+            "n_views_used": len(views_used),
+            "views_used": views_used,
+            "per_view_scores": per_view_scores,
+            "message": build_message(prediction, mal_prob, views_used),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        draft_500("草稿图片筛查失败", exc)

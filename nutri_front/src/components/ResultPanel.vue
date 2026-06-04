@@ -6,6 +6,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  showActions: {
+    type: Boolean,
+    default: true,
+  },
 })
 
 const emit = defineEmits(['reset', 'enable-assessment', 'go-assessment'])
@@ -95,11 +99,11 @@ watch(
       </div>
     </div>
 
-    <div v-if="isMalnourished" class="assessment-advice">
+    <div v-if="showActions && isMalnourished" class="assessment-advice">
       <p>⚠️ 面部筛查提示存在营养不良风险，建议进一步进行量表评估以明确营养状态。</p>
       <button class="secondary-button" type="button" @click="emit('go-assessment')">前往量表评估</button>
     </div>
 
-    <button class="secondary-button" type="button" @click="emit('reset')">重新筛查</button>
+    <button v-if="showActions" class="secondary-button" type="button" @click="emit('reset')">重新筛查</button>
   </section>
 </template>

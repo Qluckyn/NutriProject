@@ -10,6 +10,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  collapsed: {
+    type: Boolean,
+    default: false,
+  },
+  readonly: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -18,6 +26,7 @@ const isRestoring = ref(false)
 
 // 公共患者信息在三个量表间共享，局部更新后回传给父组件。
 function updateField(field, value) {
+  if (props.readonly) return
   emit('update:modelValue', {
     ...props.modelValue,
     [field]: value,
@@ -67,36 +76,51 @@ watch(
         <p class="section-kicker">Patient</p>
         <h2>患者基本信息</h2>
       </div>
-      <span class="muted-note">姓名选填，其余关键字段用于量表计算</span>
+      <span class="muted-note">{{ collapsed ? '如需修改，请返回步骤1' : '姓名选填，其余关键字段用于量表计算' }}</span>
     </div>
 
-    <div class="form-grid five-cols">
+    <div v-if="collapsed" class="result-metrics three">
+      <div>
+        <span>姓名</span>
+        <strong>{{ modelValue.name || '未填写' }}</strong>
+      </div>
+      <div>
+        <span>年龄</span>
+        <strong>{{ modelValue.age || '-' }}岁</strong>
+      </div>
+      <div>
+        <span>身高</span>
+        <strong>{{ modelValue.height || '-' }}cm</strong>
+      </div>
+    </div>
+
+    <div v-else class="form-grid five-cols">
       <label class="field-block">
         <span>姓名</span>
-        <input :value="modelValue.name" type="text" placeholder="选填" @input="updateField('name', $event.target.value)" />
+        <input :value="modelValue.name" type="text" placeholder="选填" :disabled="readonly" @input="updateField('name', $event.target.value)" />
       </label>
 
       <label class="field-block" :class="{ invalid: isMissing('age') }">
         <span>年龄 <strong>*</strong></span>
-        <input :value="modelValue.age" type="number" min="0" max="130" placeholder="岁" @input="updateField('age', $event.target.value)" />
+        <input :value="modelValue.age" type="number" min="0" max="130" placeholder="岁" :disabled="readonly" @input="updateField('age', $event.target.value)" />
       </label>
 
       <div class="field-block">
         <span>性别</span>
         <div class="segmented-options compact">
-          <label><input :checked="modelValue.gender === 'male'" type="radio" name="gender" @change="updateField('gender', 'male')" />男</label>
-          <label><input :checked="modelValue.gender === 'female'" type="radio" name="gender" @change="updateField('gender', 'female')" />女</label>
+          <label><input :checked="modelValue.gender === 'male'" type="radio" name="gender" :disabled="readonly" @change="updateField('gender', 'male')" />男</label>
+          <label><input :checked="modelValue.gender === 'female'" type="radio" name="gender" :disabled="readonly" @change="updateField('gender', 'female')" />女</label>
         </div>
       </div>
 
       <label class="field-block" :class="{ invalid: isMissing('height') }">
         <span>身高 <strong>*</strong></span>
-        <input :value="modelValue.height" type="number" min="0" step="0.1" placeholder="cm" @input="updateField('height', $event.target.value)" />
+        <input :value="modelValue.height" type="number" min="0" step="0.1" placeholder="cm" :disabled="readonly" @input="updateField('height', $event.target.value)" />
       </label>
 
       <label class="field-block">
         <span>小腿围</span>
-        <input :value="modelValue.calfCircumference" type="number" min="0" step="0.1" placeholder="cm" @input="updateField('calfCircumference', $event.target.value)" />
+        <input :value="modelValue.calfCircumference" type="number" min="0" step="0.1" placeholder="cm" :disabled="readonly" @input="updateField('calfCircumference', $event.target.value)" />
         <small>MNA-SF中可替代BMI使用</small>
       </label>
     </div>

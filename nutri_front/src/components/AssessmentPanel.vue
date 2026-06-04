@@ -22,8 +22,8 @@ const intakeLastWeek = ref('')
 
 const scaleTabs = [
   { key: 'mna', label: 'MNA-SF 微型营养评估简表' },
-  // { key: 'nrs', label: 'NRS-2002 营养风险筛查' },
-  // { key: 'glim', label: 'GLIM 营养不良评定标准' },
+  { key: 'nrs', label: 'NRS-2002 营养风险筛查' },
+  { key: 'glim', label: 'GLIM 营养不良评定标准' },
 ]
 
 // 疾病列表由后端配置驱动，服务重启后可反映 diseases.json 的变更。

@@ -6,9 +6,10 @@ const props = defineProps({
   patient: { type: Object, required: true },
   weights: { type: Object, required: true },
   intakeLastWeek: { type: [String, Number], required: true },
+  showSubmit: { type: Boolean, default: true },
 })
 
-const emit = defineEmits(['validation-failed', 'highlight-calf'])
+const emit = defineEmits(['validation-failed', 'highlight-calf', 'assessed'])
 const draftContext = inject('draftContext', null)
 const isRestoring = ref(false)
 const mobility = ref('2')
@@ -85,6 +86,7 @@ async function submit() {
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(data.detail || 'MNA-SF评估失败，请稍后重试。')
     result.value = data
+    emit('assessed', data)
   } catch (error) {
     errorMessage.value = error.message || '网络错误，请确认后端服务已启动。'
   } finally {
@@ -98,8 +100,11 @@ function levelClass(level) {
   return 'risk'
 }
 
+defineExpose({ submit })
+
 function resetResult() {
   result.value = null
+  emit('assessed', null)
 }
 
 onMounted(() => {
@@ -131,7 +136,7 @@ watch(result, (value) => {
       <div class="field-block"><span>精神心理状况</span><div class="radio-stack"><label><input v-model="mentalStatus" type="radio" value="0" />严重痴呆或抑郁</label><label><input v-model="mentalStatus" type="radio" value="1" />轻度痴呆</label><label><input v-model="mentalStatus" type="radio" value="2" />无问题</label></div></div>
       <div class="field-block" :class="{ callout: useBmi === 'false' }"><span>第6题选择方式</span><div class="segmented-options"><label><input v-model="useBmi" type="radio" value="true" />使用BMI</label><label><input v-model="useBmi" type="radio" value="false" />使用小腿围</label></div><input v-if="useBmi === 'false'" v-model="calfOverride" type="number" min="0" step="0.1" placeholder="可覆盖患者基本信息中的小腿围" /></div>
       <p v-if="errorMessage" class="error-alert compact-alert">{{ errorMessage }}</p>
-      <button class="primary-button" type="button" :disabled="loading || !formReady" @click="submit"><span v-if="loading" class="spinner" aria-hidden="true"></span>{{ loading ? '评估中...' : '开始评估 - MNA-SF' }}</button>
+      <button v-if="showSubmit" class="primary-button" type="button" :disabled="loading || !formReady" @click="submit"><span v-if="loading" class="spinner" aria-hidden="true"></span>{{ loading ? '评估中...' : '开始评估 - MNA-SF' }}</button>
       <p v-if="touched && !formReady" class="field-error">仍有必填项未完成。</p>
     </div>
     <section v-if="result" class="assessment-result" :class="levelClass(result.level)"><div class="score-hero"><span>总分</span><strong>{{ result.total_score }}/14</strong><em>{{ result.level }}</em></div><div class="progress-track"><span class="progress-fill success" :style="{ width: `${Math.min(100, result.total_score / 14 * 100)}%` }"></span></div><div class="result-metrics three"><div v-for="(score, key) in result.score_breakdown" :key="key"><span>{{ key }}</span><strong>{{ score }}分</strong></div><div><span>{{ useBmi === 'true' ? 'BMI' : '小腿围' }}</span><strong>{{ useBmi === 'true' ? result.bmi : calfValue }}</strong></div><div><span>3个月体重下降</span><strong>{{ result.weight_loss_3m_kg }}kg</strong></div></div><p class="message-text">{{ result.message }}</p><button class="secondary-button" type="button" @click="resetResult">重新评估</button></section>

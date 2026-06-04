@@ -1,16 +1,18 @@
 {
+  "current_step": 5,
+  "skipped_mnasf": true,
   "patient_info": {
     "name": "李琳",
-    "age": "62",
+    "age": "68",
     "gender": "female",
-    "height": "163",
+    "height": "159.9",
     "calfCircumference": ""
   },
   "weight_records": {
     "0": "55",
-    "1": "56",
+    "1": "57",
     "2": "58",
-    "3": "58.6",
+    "3": "59",
     "4": "",
     "5": "",
     "6": "61",
@@ -19,43 +21,63 @@
     "9": "",
     "10": "",
     "11": "",
-    "12": ""
+    "12": "63"
   },
   "intake_records": {
     "1": "",
     "2": "",
     "3": "",
-    "4": "58"
+    "4": "70"
   },
   "nrs2002_form": {},
   "mnasf_form": {},
   "glim_form": {
-    "muscleLoss": "none",
-    "reducedIntake": "false",
-    "inflammationBurden": "false",
-    "selectedDiseaseIds": [],
+    "muscleLoss": "mild_moderate",
+    "intakeUnder50Over1w": true,
+    "anyIntakeReductionOver2w": true,
+    "giSymptoms": [
+      "nausea_vomiting",
+      "abdominal_pain",
+      "other"
+    ],
+    "nutritionImpactConditions": [
+      "short_bowel",
+      "post_bariatric",
+      "other"
+    ],
+    "acuteDiseaseIds": [
+      "trauma",
+      "burn"
+    ],
+    "chronicDiseaseIds": [
+      "malignant_tumor",
+      "copd"
+    ],
+    "cancerSite": "kk",
+    "cancerStage": "早期",
+    "cancerMalnutritionRelated": "true",
     "crp": "",
     "il6": ""
   },
   "images": {
     "front": {
-      "filename": "016268_0000_9230790861_1741916343990_Color_1920x1080.png",
+      "filename": "016268_0000_9230790861_1741916343990_Color_1920x1080.jpg",
       "saved": true
     },
     "left": {
-      "filename": "016907_0000_9550153230_1741916365286_Color_1920x1080.png",
+      "filename": "016907_0000_9550153230_1741916365286_Color_1920x1080.jpg",
       "saved": true
     },
     "right": {
-      "filename": "017741_0000_9966973599_1741916393078_Color_1920x1080.png",
+      "filename": "017741_0000_9966973599_1741916393078_Color_1920x1080.jpg",
       "saved": true
     }
   },
   "image_result": {
     "prediction": "malnourished",
-    "malnourished_probability": 0.6943,
-    "normal_probability": 0.3057,
-    "confidence": 0.6943,
+    "malnourished_probability": 0.6897,
+    "normal_probability": 0.3103,
+    "confidence": 0.6897,
     "n_views_used": 3,
     "views_used": [
       "front",
@@ -64,52 +86,55 @@
     ],
     "per_view_scores": {
       "front": {
-        "malnourished_face": 0.3494,
-        "normal_face": 0.6506
+        "malnourished_face": 0.3584,
+        "normal_face": 0.6416
       },
       "left": {
-        "malnourished_face": 0.8459,
-        "normal_face": 0.1541
+        "malnourished_face": 0.8422,
+        "normal_face": 0.1578
       },
       "right": {
-        "malnourished_face": 0.8875,
-        "normal_face": 0.1125
+        "malnourished_face": 0.8686,
+        "normal_face": 0.1314
       }
     },
-    "message": "系统基于正面、左45°、右45°图像分析，营养不良风险概率为69.43%。该结果仅用于辅助筛查，建议结合量表、体重变化、饮食摄入和临床评估进一步确认。"
+    "message": "系统基于正面、左45°、右45°图像分析，营养不良风险概率为68.97%。该结果仅用于辅助筛查，建议结合量表、体重变化、饮食摄入和临床评估进一步确认。"
   },
   "nrs2002_result": {
     "tool": "NRS-2002",
-    "total_score": 1,
-    "nutrition_score": 1,
+    "total_score": 2,
+    "nutrition_score": 2,
     "disease_score": 0,
     "age_score": 0,
-    "bmi": 20.7008,
+    "bmi": 21.5113,
     "weight_loss_details": {
-      "1m_loss_pct": 1.7857,
+      "1m_loss_pct": 3.5088,
       "2m_loss_pct": 5.1724,
-      "3m_loss_pct": 6.1433
+      "3m_loss_pct": 6.7797
     },
     "has_risk": false,
     "risk_level": "暂无营养风险",
     "recommendation": "建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。",
-    "message": "NRS-2002总分为1分，判定为：暂无营养风险。建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。"
+    "message": "NRS-2002总分为2分，判定为：暂无营养风险。建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。"
   },
-  "mnasf_result": {
-    "tool": "MNA-SF",
-    "total_score": 8,
-    "score_breakdown": {
-      "q1_appetite": 1,
-      "q2_weight_loss": 0,
-      "q3_mobility": 2,
-      "q4_stress": 2,
-      "q5_mental": 2,
-      "q6_bmi_or_calf": 1
-    },
-    "bmi": 20.7008,
-    "weight_loss_3m_kg": 4,
-    "level": "营养不良风险",
-    "message": "MNA-SF总分为8/14分，评估等级为：营养不良风险。建议结合病史和饮食记录进行持续营养管理。"
-  },
-  "glim_result": null
+  "mnasf_result": null,
+  "glim_result": {
+    "tool": "GLIM",
+    "is_malnourished": true,
+    "phenotypic_met": true,
+    "etiological_met": true,
+    "phenotypic_criteria_triggered": [
+      "非自主体重丢失",
+      "肌肉减少"
+    ],
+    "etiological_criteria_triggered": [
+      "摄食减少或消化吸收障碍：摄入量≤50%能量需求超过一周、任意摄入量减少超过2周、恶心、呕吐、腹痛、其他慢性胃肠症状、短肠综合征、减肥手术后、其他相关消化吸收疾病",
+      "炎症或疾病负担：急性疾病或损伤：创伤、急性疾病或损伤：烧伤、慢性或反复发作疾病：恶性肿瘤（癌症） [具体部位kk，癌症分期早期，疾病相关性营养不良病因是]、慢性或反复发作疾病：慢性阻塞性肺病"
+    ],
+    "bmi": 21.5113,
+    "weight_loss_6m_pct": 9.8361,
+    "weight_loss_over6m_pct": 12.6984,
+    "severity": "中度营养不良（1期）",
+    "message": "GLIM标准提示营养不良，严重程度为中度营养不良（1期）。"
+  }
 }
