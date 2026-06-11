@@ -399,10 +399,6 @@
           "name": "慢性肝病（肝硬化/肝源性腹水）"
         },
         {
-          "id": "liver_cirrhosis",
-          "name": "肝硬化"
-        },
-        {
           "id": "rheumatoid_arthritis",
           "name": "类风湿关节炎"
         },

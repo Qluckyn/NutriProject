@@ -20,6 +20,13 @@ from models.clip import CLIP as NutriCLIP  # noqa: E402
 # =========================
 # YHQ的
 CHECKPOINT_PATH = "./classify_model/weight/best_checkpoint.pth"
+# CHECKPOINT_PATH = (
+#     "/root/autodl-tmp/runs/ablation/classify_outputs/"
+#     "clip_real_plus_synth_qc_pool0.7_nipc330_lr1e-5_nomix/"
+#     "my_dataset/clipViT-B/16/n_img_per_cls_500/sd2.1/"
+#     "shot20_seed0_template1_ddlr0.0001_ddep240_lbd0.8/"
+#     "lr1e-05_wd0.0001_mixuag/best_checkpoint.pth"
+# )
 # SZJ的
 # CHECKPOINT_PATH = "./classify_model/weight2/best_checkpoint.pth"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -157,9 +164,12 @@ def load_model() -> None:
         clip_download_dir=None,
         clip_version="ViT-B/16",
     )
+    # loralib.MergedLinear 在切换 eval 时会合并 LoRA 权重；
+    # 先进入 eval 再加载 checkpoint，避免加载后再次 merge 造成概率漂移。
+    current_model = current_model.to(DEVICE).eval()
     checkpoint = torch.load(CHECKPOINT_PATH, map_location=DEVICE, weights_only=False)
     current_model.load_state_dict(checkpoint["model"], strict=False)
-    model = current_model.to(DEVICE).eval()
+    model = current_model
 
 
 @app.get("/health")
