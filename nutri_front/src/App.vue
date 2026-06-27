@@ -68,6 +68,8 @@ const nrs2002Result = ref(null)
 const mnaSFResult = ref(null)
 const imageResult = ref(null)
 const glimResult = ref(null)
+// 综合结果页的勾选状态只用于当前前端会话，不写入草稿。
+const finalResultSelection = reactive({ nrs2002: false, mnaSF: false, image: false, glim: false })
 
 const patientReady = computed(() => Boolean(patientInfo.age && patientInfo.height))
 const step1VisibleMonths = [0, 1, 2, 3]
@@ -81,6 +83,12 @@ const step2Ready = computed(() => patientReady.value && step2RequiredMonths.ever
 const step4Ready = computed(() => patientReady.value && step4RequiredMonths.every((month) => weightRecords[String(month)]))
 const hasDraftImage = computed(() => Object.values(draftData.images || {}).some((item) => item?.saved))
 const canSubmitImage = computed(() => hasDraftImage.value && pendingImageUploads.value === 0 && !imageLoading.value)
+const finalResultOptions = computed(() => [
+  { key: 'nrs2002', label: 'NRS-2002 营养风险筛查', visible: Boolean(nrs2002Result.value) },
+  { key: 'mnaSF', label: 'MNA-SF 微型营养评估', visible: Boolean(mnaSFResult.value && !skippedMnaSF.value) },
+  { key: 'image', label: '面部图像筛查', visible: Boolean(imageResult.value) },
+  { key: 'glim', label: 'GLIM 营养不良评定', visible: Boolean(glimResult.value) },
+])
 
 function replaceDraftData(nextDraft) {
   Object.assign(draftData, emptyDraft(), nextDraft || {})
@@ -294,6 +302,10 @@ async function submitPrediction() {
   }
 }
 
+async function resetFinalResultSelection() {
+  Object.assign(finalResultSelection, { nrs2002: false, mnaSF: false, image: false, glim: false })
+}
+
 async function resetAll() {
   try {
     const response = await fetch(`${API_BASE}/draft`, { method: 'DELETE' })
@@ -310,6 +322,7 @@ async function resetAll() {
   imageError.value = ''
   clearToken.value += 1
   resetToken.value += 1
+  resetFinalResultSelection()
   currentStep.value = 1
 }
 
@@ -447,29 +460,39 @@ function percent(value) {
     </section>
 
     <section v-if="currentStep === 5" class="step-panel">
+      <section class="final-result-selector" aria-label="选择要查看的综合结果">
+        <label v-for="option in finalResultOptions.filter((item) => item.visible)" :key="option.key" class="final-result-check">
+          <input v-model="finalResultSelection[option.key]" type="checkbox" />
+          <span>{{ option.label }}</span>
+        </label>
+        <p>请勾选需要查看的评估结果</p>
+      </section>
+
       <div class="final-results-grid">
-        <section v-if="nrs2002Result" class="assessment-result" :class="nrs2002Result.has_risk ? 'risk' : 'good'">
+        <section v-if="nrs2002Result && finalResultSelection.nrs2002" class="assessment-result" :class="nrs2002Result.has_risk ? 'risk' : 'good'">
           <div class="score-hero"><span>NRS-2002</span><strong>{{ nrs2002Result.total_score }}</strong><em>{{ nrs2002Result.risk_level }}</em></div>
           <div class="result-metrics three"><div><span>营养状态受损</span><strong>{{ nrs2002Result.nutrition_score }}分</strong></div><div><span>疾病严重程度</span><strong>{{ nrs2002Result.disease_score }}分</strong></div><div><span>年龄</span><strong>{{ nrs2002Result.age_score }}分</strong></div></div>
           <p class="message-text">{{ nrs2002Result.message }}</p>
         </section>
 
-        <section v-if="mnaSFResult && !skippedMnaSF" class="assessment-result" :class="mnaSFResult.level === '营养正常' ? 'good' : mnaSFResult.level === '营养不良风险' ? 'caution' : 'risk'">
+        <section v-if="mnaSFResult && !skippedMnaSF && finalResultSelection.mnaSF" class="assessment-result" :class="mnaSFResult.level === '营养正常' ? 'good' : mnaSFResult.level === '营养不良风险' ? 'caution' : 'risk'">
           <div class="score-hero"><span>MNA-SF</span><strong>{{ mnaSFResult.total_score }}/14</strong><em>{{ mnaSFResult.level }}</em></div>
           <div class="progress-track"><span class="progress-fill success" :style="{ width: `${Math.min(100, mnaSFResult.total_score / 14 * 100)}%` }"></span></div>
           <p class="message-text">{{ mnaSFResult.message }}</p>
         </section>
 
-        <ResultPanel v-if="imageResult" :result="imageResult" :show-actions="false" />
+        <ResultPanel v-if="imageResult && finalResultSelection.image" :result="imageResult" :show-actions="false" />
 
-        <section v-if="glimResult" class="assessment-result" :class="glimResult.is_malnourished ? 'risk' : 'good'">
+        <section v-if="glimResult && finalResultSelection.glim" class="assessment-result" :class="glimResult.is_malnourished ? 'risk' : 'good'">
           <div class="score-hero"><span>GLIM</span><strong>{{ glimResult.is_malnourished ? '营养不良' : '未诊断营养不良' }}</strong><em v-if="glimResult.severity">{{ glimResult.severity }}</em></div>
           <div class="criteria-columns"><div><h3>表型标准</h3><span v-for="item in glimResult.phenotypic_criteria_triggered" :key="item" class="tag-pill">{{ item }}</span><p v-if="!glimResult.phenotypic_criteria_triggered.length">未触发</p></div><div><h3>病因标准</h3><div v-for="group in formatEtiologicalCriteria(glimResult.etiological_criteria_triggered)" :key="group.title" class="criteria-group"><h4>{{ group.title }}</h4><span v-for="option in group.options" :key="`${group.title}-${option}`" class="tag-pill">{{ option }}</span></div><p v-if="!glimResult.etiological_criteria_triggered.length">未触发</p></div></div>
           <div class="result-metrics three"><div><span>6个月内体重丢失</span><strong>{{ glimResult.weight_loss_6m_pct }}%</strong></div><div><span>6个月以上体重丢失</span><strong>{{ glimResult.weight_loss_over6m_pct }}%</strong></div><div><span>BMI</span><strong>{{ glimResult.bmi }}</strong></div></div>
           <p class="message-text">{{ glimResult.message }}</p>
         </section>
       </div>
-      <div class="step-actions">
+      <div class="step-actions split-actions">
+        <button class="secondary-button" type="button" @click="goPrevious">上一步</button>
+        <span class="action-spacer"></span>
         <button class="secondary-button" type="button" @click="resetAll">重新开始</button>
       </div>
     </section>
@@ -556,8 +579,14 @@ function percent(value) {
 .step-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 12px;
+}
+
+/* 全局 secondary-button 带有顶部间距，步骤底部按钮需要同一水平线对齐。 */
+.step-actions .secondary-button {
+  margin-top: 0;
 }
 
 .split-actions {
@@ -576,10 +605,52 @@ function percent(value) {
   margin-top: 0;
 }
 
+.final-result-selector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 16px;
+  border: 1px solid #dceaf2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.final-result-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #263746;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.final-result-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: #1689a7;
+}
+
+.final-result-selector p {
+  flex-basis: 100%;
+  margin: 0;
+  color: #7a8795;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .final-results-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   gap: 18px;
+}
+
+/* 综合结果卡片统一作为网格项展示，避免 ResultPanel 的全局上边距造成错位。 */
+.final-results-grid > .assessment-result,
+.final-results-grid > .result-panel {
+  height: 100%;
+  margin-top: 0;
 }
 
 @media (max-width: 900px) {

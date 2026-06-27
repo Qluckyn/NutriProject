@@ -2,76 +2,88 @@
   "current_step": 5,
   "skipped_mnasf": false,
   "patient_info": {
-    "name": "李琳",
-    "age": "68",
+    "name": "李林",
+    "age": "63",
     "gender": "female",
-    "height": "164",
+    "height": "165",
     "calfCircumference": ""
   },
   "weight_records": {
     "0": "55",
-    "1": "57",
-    "2": "59",
+    "1": "56",
+    "2": "58",
     "3": "59",
     "4": "",
     "5": "",
-    "6": "66",
+    "6": "60",
     "7": "",
     "8": "",
     "9": "",
     "10": "",
     "11": "",
-    "12": "66"
+    "12": "62"
   },
   "intake_records": {
     "1": "",
     "2": "",
     "3": "",
-    "4": "66"
+    "4": "76"
   },
-  "nrs2002_form": {},
-  "mnasf_form": {},
+  "nrs2002_form": {
+    "generalConditionImpaired": "false",
+    "selectedDiseaseIds": [
+      "diabetes",
+      "esophageal_stricture",
+      "trauma",
+      "brain_injury"
+    ]
+  },
+  "mnasf_form": {
+    "mobility": "2",
+    "stressOrAcuteDisease": "true",
+    "mentalStatus": "2",
+    "useBmi": "true",
+    "calfOverride": ""
+  },
   "glim_form": {
-    "muscleLoss": "none",
-    "intakeUnder50Over1w": false,
+    "muscleLoss": "mild_moderate",
+    "intakeUnder50Over1w": true,
     "anyIntakeReductionOver2w": false,
     "giSymptoms": [
-      "abdominal_pain"
+      "dysphagia"
     ],
-    "nutritionImpactConditions": [],
-    "acuteDiseaseIds": [],
-    "chronicDiseaseIds": [
-      "liver_cirrhosis",
-      "chronic_liver",
-      "ckd",
-      "rheumatoid_arthritis",
-      "other"
+    "nutritionImpactConditions": [
+      "esophageal_stricture"
     ],
+    "acuteDiseaseIds": [
+      "trauma"
+    ],
+    "chronicDiseaseIds": [],
     "cancerSite": "",
     "cancerStage": "",
     "cancerMalnutritionRelated": "",
-    "crp": 6,
+    "crp": "",
     "il6": ""
   },
   "images": {
     "front": {
-      "filename": "060696_0000_26305244117_1740016679048_Color_1920x1080.jpg",
+      "filename": "016268_0000_9230790861_1741916343990_Color_1920x1080.jpg",
       "saved": true
     },
     "left": {
-      "filename": "060992_0000_26453180363_1740016688904_Color_1920x1080.jpg",
+      "filename": "016907_0000_9550153230_1741916365286_Color_1920x1080.jpg",
       "saved": true
     },
     "right": {
-      "filename": "061591_0000_26752551348_1740016708856_Color_1920x1080.jpg",
+      "filename": "017741_0000_9966973599_1741916393078_Color_1920x1080.jpg",
       "saved": true
     }
   },
   "image_result": {
-    "prediction": "normal",
-    "malnourished_probability": 0.0143,
-    "normal_probability": 0.9857,
-    "confidence": 0.9857,
+    "prediction": "malnourished",
+    "malnourished_probability": 0.6673,
+    "normal_probability": 0.3327,
+    "confidence": 0.6673,
     "n_views_used": 3,
     "views_used": [
       "front",
@@ -80,52 +92,52 @@
     ],
     "per_view_scores": {
       "front": {
-        "malnourished_face": 0.0193,
-        "normal_face": 0.9807
+        "malnourished_face": 0.4841,
+        "normal_face": 0.5159
       },
       "left": {
-        "malnourished_face": 0.0165,
-        "normal_face": 0.9835
+        "malnourished_face": 0.7816,
+        "normal_face": 0.2184
       },
       "right": {
-        "malnourished_face": 0.0072,
-        "normal_face": 0.9928
+        "malnourished_face": 0.7362,
+        "normal_face": 0.2638
       }
     },
-    "message": "系统基于正面、左45°、右45°图像分析，当前更倾向于营养状态正常，营养不良风险概率为1.43%。如近期存在体重下降、食欲减退或基础疾病变化，仍建议进行专业营养评估。"
+    "message": "系统基于正面、左45°、右45°图像分析，营养不良风险概率为66.73%。该结果仅用于辅助筛查，建议结合量表、体重变化、饮食摄入和临床评估进一步确认。"
   },
   "nrs2002_result": {
     "tool": "NRS-2002",
-    "total_score": 2,
+    "total_score": 5,
     "nutrition_score": 2,
-    "disease_score": 0,
+    "disease_score": 3,
     "age_score": 0,
-    "bmi": 20.4491,
+    "bmi": 20.202,
     "weight_loss_details": {
-      "1m_loss_pct": 3.5088,
-      "2m_loss_pct": 6.7797,
+      "1m_loss_pct": 1.7857,
+      "2m_loss_pct": 5.1724,
       "3m_loss_pct": 6.7797
     },
-    "has_risk": false,
-    "risk_level": "暂无营养风险",
-    "recommendation": "建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。",
-    "message": "NRS-2002总分为2分，判定为：暂无营养风险。建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。"
+    "has_risk": true,
+    "risk_level": "存在营养风险",
+    "recommendation": "建议启动营养支持流程，结合临床情况完善膳食评估、实验室检查和个体化营养干预。",
+    "message": "NRS-2002总分为5分，判定为：存在营养风险。建议启动营养支持流程，结合临床情况完善膳食评估、实验室检查和个体化营养干预。"
   },
   "mnasf_result": {
     "tool": "MNA-SF",
-    "total_score": 8,
+    "total_score": 7,
     "score_breakdown": {
-      "q1_appetite": 1,
+      "q1_appetite": 2,
       "q2_weight_loss": 0,
       "q3_mobility": 2,
-      "q4_stress": 2,
+      "q4_stress": 0,
       "q5_mental": 2,
       "q6_bmi_or_calf": 1
     },
-    "bmi": 20.4491,
+    "bmi": 20.202,
     "weight_loss_3m_kg": 4,
-    "level": "营养不良风险",
-    "message": "MNA-SF总分为8/14分，评估等级为：营养不良风险。建议结合病史和饮食记录进行持续营养管理。"
+    "level": "营养不良",
+    "message": "MNA-SF总分为7/14分，评估等级为：营养不良。建议结合病史和饮食记录进行持续营养管理。"
   },
   "glim_result": {
     "tool": "GLIM",
@@ -133,16 +145,17 @@
     "phenotypic_met": true,
     "etiological_met": true,
     "phenotypic_criteria_triggered": [
-      "非自主体重丢失"
+      "非自主体重丢失",
+      "肌肉减少"
     ],
     "etiological_criteria_triggered": [
-      "摄食减少或消化吸收障碍：腹痛",
-      "炎症或疾病负担：慢性或反复发作疾病：慢性肝病（肝硬化/肝源性腹水）、慢性或反复发作疾病：慢性肾脏疾病、慢性或反复发作疾病：类风湿关节炎、慢性或反复发作疾病：其他、炎症状态指标：CRP升高"
+      "摄食减少或消化吸收障碍：摄入量≤50%能量需求超过一周、吞咽困难、食管狭窄",
+      "炎症或疾病负担：急性疾病或损伤：创伤"
     ],
-    "bmi": 20.4491,
-    "weight_loss_6m_pct": 16.6667,
-    "weight_loss_over6m_pct": 16.6667,
-    "severity": "重度营养不良（2期）",
-    "message": "GLIM标准提示营养不良，严重程度为重度营养不良（2期）。"
+    "bmi": 20.202,
+    "weight_loss_6m_pct": 8.3333,
+    "weight_loss_over6m_pct": 11.2903,
+    "severity": "中度营养不良（1期）",
+    "message": "GLIM标准提示营养不良，严重程度为中度营养不良（1期）。"
   }
 }
