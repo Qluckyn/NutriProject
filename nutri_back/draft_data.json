@@ -3,7 +3,7 @@
   "skipped_mnasf": false,
   "patient_info": {
     "name": "李林",
-    "age": "63",
+    "age": "62",
     "gender": "female",
     "height": "165",
     "calfCircumference": ""
@@ -12,7 +12,7 @@
     "0": "55",
     "1": "56",
     "2": "58",
-    "3": "59",
+    "3": "60",
     "4": "",
     "5": "",
     "6": "60",
@@ -33,9 +33,7 @@
     "generalConditionImpaired": "false",
     "selectedDiseaseIds": [
       "diabetes",
-      "esophageal_stricture",
-      "trauma",
-      "brain_injury"
+      "esophageal_stricture"
     ]
   },
   "mnasf_form": {
@@ -58,7 +56,9 @@
     "acuteDiseaseIds": [
       "trauma"
     ],
-    "chronicDiseaseIds": [],
+    "chronicDiseaseIds": [
+      "rheumatoid_arthritis"
+    ],
     "cancerSite": "",
     "cancerStage": "",
     "cancerMalnutritionRelated": "",
@@ -108,20 +108,20 @@
   },
   "nrs2002_result": {
     "tool": "NRS-2002",
-    "total_score": 5,
+    "total_score": 3,
     "nutrition_score": 2,
-    "disease_score": 3,
+    "disease_score": 1,
     "age_score": 0,
     "bmi": 20.202,
     "weight_loss_details": {
       "1m_loss_pct": 1.7857,
       "2m_loss_pct": 5.1724,
-      "3m_loss_pct": 6.7797
+      "3m_loss_pct": 8.3333
     },
     "has_risk": true,
     "risk_level": "存在营养风险",
     "recommendation": "建议启动营养支持流程，结合临床情况完善膳食评估、实验室检查和个体化营养干预。",
-    "message": "NRS-2002总分为5分，判定为：存在营养风险。建议启动营养支持流程，结合临床情况完善膳食评估、实验室检查和个体化营养干预。"
+    "message": "NRS-2002总分为3分，判定为：存在营养风险。建议启动营养支持流程，结合临床情况完善膳食评估、实验室检查和个体化营养干预。"
   },
   "mnasf_result": {
     "tool": "MNA-SF",
@@ -135,7 +135,7 @@
       "q6_bmi_or_calf": 1
     },
     "bmi": 20.202,
-    "weight_loss_3m_kg": 4,
+    "weight_loss_3m_kg": 5,
     "level": "营养不良",
     "message": "MNA-SF总分为7/14分，评估等级为：营养不良。建议结合病史和饮食记录进行持续营养管理。"
   },
@@ -150,7 +150,7 @@
     ],
     "etiological_criteria_triggered": [
       "摄食减少或消化吸收障碍：摄入量≤50%能量需求超过一周、吞咽困难、食管狭窄",
-      "炎症或疾病负担：急性疾病或损伤：创伤"
+      "炎症或疾病负担：急性疾病或损伤：创伤、慢性或反复发作疾病：类风湿关节炎"
     ],
     "bmi": 20.202,
     "weight_loss_6m_pct": 8.3333,
