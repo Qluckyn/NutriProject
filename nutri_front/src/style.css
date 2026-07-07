@@ -557,12 +557,14 @@ button {
 }
 
 .field-block input:focus,
+.field-block select:focus,
 .weight-table input:focus {
   border-color: #147a92;
   box-shadow: 0 0 0 3px rgba(20, 122, 146, 0.12);
 }
 
 .field-block.invalid input,
+.field-block.invalid select,
 .weight-table tr.invalid input {
   border-color: #e16635;
   background: #fff8f5;
@@ -803,6 +805,16 @@ button {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.result-metrics.nrs-detail-metrics,
+.result-metrics.detail-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+
+.result-metrics.nrs-detail-metrics > div,
+.result-metrics.detail-metrics > div {
+  background: #ffffff;
+}
+
 .result-metrics > div,
 .criteria-columns > div {
   padding: 13px;
@@ -822,6 +834,24 @@ button {
   color: #17314d;
 }
 
+.assessment-result .result-metrics span {
+  color: #10253f;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.assessment-result .result-metrics strong {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.final-result-title {
+  margin: 0 0 14px;
+  color: #10253f;
+  font-size: 16px;
+  font-weight: 900;
+}
+
 .criteria-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -838,6 +868,19 @@ button {
 .criteria-columns p {
   margin: 10px 0 0;
   color: #65778b;
+}
+
+.metric-reason {
+  display: block;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid #b7e2ce;
+  border-radius: 8px;
+  background: #e9f7f3;
+  color: #147a77;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 @media (max-width: 980px) {

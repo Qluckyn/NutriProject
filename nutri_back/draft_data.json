@@ -1,64 +1,46 @@
 {
-  "current_step": 5,
+  "current_step": 1,
   "skipped_mnasf": false,
   "patient_info": {
-    "name": "李林",
-    "age": "62",
+    "name": "",
+    "age": "64",
     "gender": "female",
     "height": "165",
     "calfCircumference": ""
   },
   "weight_records": {
-    "0": "55",
-    "1": "56",
-    "2": "58",
-    "3": "60",
+    "0": "50",
+    "1": "53",
+    "2": "55",
+    "3": "56",
     "4": "",
     "5": "",
-    "6": "60",
+    "6": "",
     "7": "",
     "8": "",
     "9": "",
     "10": "",
     "11": "",
-    "12": "62"
+    "12": ""
   },
   "intake_records": {
     "1": "",
     "2": "",
     "3": "",
-    "4": "76"
+    "4": "25"
   },
-  "nrs2002_form": {
-    "generalConditionImpaired": "false",
-    "selectedDiseaseIds": [
-      "diabetes",
-      "esophageal_stricture"
-    ]
-  },
-  "mnasf_form": {
-    "mobility": "2",
-    "stressOrAcuteDisease": "true",
-    "mentalStatus": "2",
-    "useBmi": "true",
-    "calfOverride": ""
-  },
+  "nrs2002_form": {},
+  "mnasf_form": {},
   "glim_form": {
     "muscleLoss": "mild_moderate",
-    "intakeUnder50Over1w": true,
+    "intakeUnder50Over1w": false,
     "anyIntakeReductionOver2w": false,
-    "giSymptoms": [
-      "dysphagia"
-    ],
+    "giSymptoms": [],
     "nutritionImpactConditions": [
-      "esophageal_stricture"
+      "post_bariatric"
     ],
-    "acuteDiseaseIds": [
-      "trauma"
-    ],
-    "chronicDiseaseIds": [
-      "rheumatoid_arthritis"
-    ],
+    "acuteDiseaseIds": [],
+    "chronicDiseaseIds": [],
     "cancerSite": "",
     "cancerStage": "",
     "cancerMalnutritionRelated": "",
@@ -109,14 +91,58 @@
   "nrs2002_result": {
     "tool": "NRS-2002",
     "total_score": 3,
-    "nutrition_score": 2,
-    "disease_score": 1,
+    "nutrition_score": 3,
+    "disease_score": 0,
     "age_score": 0,
-    "bmi": 20.202,
+    "bmi": 18.4,
     "weight_loss_details": {
-      "1m_loss_pct": 1.7857,
-      "2m_loss_pct": 5.1724,
-      "3m_loss_pct": 8.3333
+      "1m_loss_pct": 5.7,
+      "2m_loss_pct": 9.1,
+      "3m_loss_pct": 10.7
+    },
+    "score_evidence": {
+      "nutrition": [
+        {
+          "label": "体重下降",
+          "score": 3,
+          "triggered": true,
+          "reason": "1个月体重下降5.7%，超过5%，触发3分。"
+        },
+        {
+          "label": "BMI",
+          "score": 0,
+          "triggered": false,
+          "reason": "BMI为18.4，但全身情况未标记为受损，BMI项不加分。"
+        },
+        {
+          "label": "摄食量",
+          "score": 3,
+          "triggered": true,
+          "reason": "最近一周摄食量为占正常进食的1/4，小于等于正常需求的1/4，触发3分。"
+        },
+        {
+          "label": "最终采用",
+          "score": 3,
+          "triggered": true,
+          "reason": "营养状态受损分取体重下降、BMI、摄食量三项中的最高值：3分。"
+        }
+      ],
+      "disease": [
+        {
+          "label": "疾病严重程度",
+          "score": 0,
+          "triggered": false,
+          "reason": "未选择NRS-2002疾病严重程度相关疾病，疾病项为0分。"
+        }
+      ],
+      "age": [
+        {
+          "label": "年龄",
+          "score": 0,
+          "triggered": false,
+          "reason": "年龄64岁，<70岁，年龄项为0分。"
+        }
+      ]
     },
     "has_risk": true,
     "risk_level": "存在营养风险",
@@ -125,19 +151,57 @@
   },
   "mnasf_result": {
     "tool": "MNA-SF",
-    "total_score": 7,
+    "total_score": 6,
     "score_breakdown": {
-      "q1_appetite": 2,
+      "q1_appetite": 0,
       "q2_weight_loss": 0,
       "q3_mobility": 2,
-      "q4_stress": 0,
+      "q4_stress": 2,
       "q5_mental": 2,
-      "q6_bmi_or_calf": 1
+      "q6_bmi_or_calf": 0
     },
-    "bmi": 20.202,
-    "weight_loss_3m_kg": 5,
+    "score_evidence": [
+      {
+        "label": "摄食量",
+        "score": 0,
+        "triggered": true,
+        "reason": "最近一周摄食量为占正常进食的1/4，对应0分。"
+      },
+      {
+        "label": "近3个月体重下降",
+        "score": 0,
+        "triggered": true,
+        "reason": "近3个月体重下降6.0kg，超过3kg，计0分。"
+      },
+      {
+        "label": "活动能力",
+        "score": 2,
+        "triggered": false,
+        "reason": "活动能力为“可以外出”，计2分。"
+      },
+      {
+        "label": "心理创伤或急性疾病",
+        "score": 2,
+        "triggered": false,
+        "reason": "近3个月无心理创伤或急性疾病，计2分。"
+      },
+      {
+        "label": "精神心理状况",
+        "score": 2,
+        "triggered": false,
+        "reason": "精神心理状况为“无问题”，计2分。"
+      },
+      {
+        "label": "BMI/小腿围",
+        "score": 0,
+        "triggered": true,
+        "reason": "BMI为18.4，低于19，计0分。"
+      }
+    ],
+    "bmi": 18.4,
+    "weight_loss_3m_kg": 6,
     "level": "营养不良",
-    "message": "MNA-SF总分为7/14分，评估等级为：营养不良。建议结合病史和饮食记录进行持续营养管理。"
+    "message": "MNA-SF总分为6/14分，评估等级为：营养不良。建议结合病史和饮食记录进行持续营养管理。"
   },
   "glim_result": {
     "tool": "GLIM",
@@ -145,17 +209,16 @@
     "phenotypic_met": true,
     "etiological_met": true,
     "phenotypic_criteria_triggered": [
-      "非自主体重丢失",
+      "低BMI",
       "肌肉减少"
     ],
     "etiological_criteria_triggered": [
-      "摄食减少或消化吸收障碍：摄入量≤50%能量需求超过一周、吞咽困难、食管狭窄",
-      "炎症或疾病负担：急性疾病或损伤：创伤、慢性或反复发作疾病：类风湿关节炎"
+      "摄食减少或消化吸收障碍：减肥手术后"
     ],
-    "bmi": 20.202,
-    "weight_loss_6m_pct": 8.3333,
-    "weight_loss_over6m_pct": 11.2903,
-    "severity": "中度营养不良（1期）",
-    "message": "GLIM标准提示营养不良，严重程度为中度营养不良（1期）。"
+    "bmi": 18.4,
+    "weight_loss_6m_pct": null,
+    "weight_loss_over6m_pct": null,
+    "severity": "重度营养不良（2期）",
+    "message": "GLIM标准提示营养不良，严重程度为重度营养不良（2期）。"
   }
 }

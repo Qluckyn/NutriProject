@@ -52,6 +52,7 @@ const nrsDiseases = ref([])
 const glimConfig = ref(null)
 const diseaseError = ref('')
 const imageError = ref('')
+const validationMessage = ref('')
 const imageLoading = ref(false)
 const pendingImageUploads = ref(0)
 const nrsFormRef = ref(null)
@@ -73,11 +74,12 @@ const finalResultSelection = reactive({ nrs2002: false, mnaSF: false, image: fal
 
 const patientReady = computed(() => Boolean(patientInfo.age && patientInfo.height))
 const step1VisibleMonths = [0, 1, 2, 3]
-const step1RequiredMonths = [0, 1, 2, 3]
+const step1RequiredMonths = [0]
 const step2VisibleMonths = [0, 3]
-const step2RequiredMonths = [0, 3]
+const step2RequiredMonths = [0]
 const step4VisibleMonths = [0, 6, 12]
-const step4RequiredMonths = [0, 6, 12]
+const step4RequiredMonths = [0]
+const step4MonthLabels = { 6: '6个月以内', 12: '6个月以上' }
 const step1Ready = computed(() => patientReady.value && step1RequiredMonths.every((month) => weightRecords[String(month)]) && intakeLastWeek.value !== '')
 const step2Ready = computed(() => patientReady.value && step2RequiredMonths.every((month) => weightRecords[String(month)]) && intakeLastWeek.value !== '')
 const step4Ready = computed(() => patientReady.value && step4RequiredMonths.every((month) => weightRecords[String(month)]))
@@ -186,29 +188,34 @@ watch(skippedMnaSF, (value) => {
 })
 
 function updatePatient(next) {
+  validationMessage.value = ''
   Object.assign(patientInfo, next)
   draftData.patient_info = { ...patientInfo }
   saveDraft()
 }
 
 function updateWeights(next) {
+  validationMessage.value = ''
   Object.assign(weightRecords, next)
   draftData.weight_records = { ...weightRecords }
   saveDraft()
 }
 
 function updateWeeks(next) {
+  validationMessage.value = ''
   Object.assign(intakeRecords, next)
   draftData.intake_records = { ...intakeRecords }
   saveDraft()
 }
 
 function updateLastWeek(value) {
+  validationMessage.value = ''
   intakeLastWeek.value = value
 }
 
-function markValidationFailed() {
+function markValidationFailed(message = '仍有必填项未完成。') {
   showErrors.value = true
+  validationMessage.value = message
 }
 
 function setNrsResult(value) {
@@ -231,20 +238,32 @@ function setGlimResult(value) {
 }
 
 function submitNrs() {
+  validationMessage.value = ''
   showErrors.value = true
-  if (!step1Ready.value) return
+  if (!step1Ready.value) {
+    markValidationFailed('请先补全患者年龄、身高、当前体重和最近一周摄食量。')
+    return
+  }
   nrsFormRef.value?.submit()
 }
 
 function submitMna() {
+  validationMessage.value = ''
   showErrors.value = true
-  if (!step2Ready.value) return
+  if (!step2Ready.value) {
+    markValidationFailed('请先补全患者年龄、身高、当前体重和最近一周摄食量。')
+    return
+  }
   mnaFormRef.value?.submit()
 }
 
 function submitGlim() {
+  validationMessage.value = ''
   showErrors.value = true
-  if (!step4Ready.value) return
+  if (!step4Ready.value) {
+    markValidationFailed('请先补全年龄、身高和当前体重。')
+    return
+  }
   glimFormRef.value?.submit()
 }
 
@@ -320,6 +339,7 @@ async function resetAll() {
   Object.assign(imageFiles, { front: null, left: null, right: null })
   showErrors.value = false
   imageError.value = ''
+  validationMessage.value = ''
   clearToken.value += 1
   resetToken.value += 1
   resetFinalResultSelection()
@@ -362,6 +382,121 @@ function formatEtiologicalCriteria(items = []) {
 function percent(value) {
   return `${Math.round(Number(value || 0) * 10000) / 100}%`
 }
+
+
+
+function nrsLossText(value) {
+  if (value === null || value === undefined) return '数据缺失'
+  const numeric = Number(value)
+  if (Number.isNaN(numeric)) return '数据缺失'
+  if (numeric <= 0) return '未丢失体重'
+  return `${numeric}%`
+}
+
+function nrsBmiText(value) {
+  if (value?.bmi === null || value?.bmi === undefined) return '数据缺失'
+  return String(value.bmi)
+}
+
+function nrsMetricReasons(value, key) {
+  const evidence = value?.score_evidence
+  if (!evidence) return []
+  if (key === 'nutrition') {
+    const allItems = evidence.nutrition || []
+    const score = Number(value.nutrition_score)
+    if (score === 0) return ['正常营养状态']
+    const triggeredItems = allItems.filter((item) => item.label !== '最终采用' && item.triggered && Number(item.score) === score)
+    return triggeredItems.map((item) => item.reason).filter(Boolean)
+  }
+  if (key === 'disease') {
+    if (Number(value.disease_score) === 0) return ['正常营养需求']
+    return evidence.disease?.[0]?.reason ? [evidence.disease[0].reason] : []
+  }
+  if (key === 'age') return evidence.age?.[0]?.reason ? [evidence.age[0].reason] : []
+  return []
+}
+
+function mnaLevelClass(level) {
+  if (level === '营养正常') return 'good'
+  if (level === '营养不良风险') return 'caution'
+  return 'risk'
+}
+
+const mnaEvidenceKeyOrder = ['q1_appetite', 'q2_weight_loss', 'q3_mobility', 'q4_stress', 'q5_mental', 'q6_bmi_or_calf']
+const mnaMetricLabels = {
+  q1_appetite: '摄食量',
+  q2_weight_loss: '近3个月体重下降',
+  q3_mobility: '活动能力',
+  q4_stress: '心理创伤或急性疾病',
+  q5_mental: '精神心理状况',
+  q6_bmi_or_calf: 'BMI/小腿围',
+}
+
+function mnaMetricLabel(key) {
+  return mnaMetricLabels[key] || key
+}
+
+function mnaMetricReason(value, key) {
+  const index = mnaEvidenceKeyOrder.indexOf(key)
+  return index === -1 ? '' : value?.score_evidence?.[index]?.reason || ''
+}
+
+
+function glimLossText(value) {
+  if (value === null || value === undefined) return '数据缺失'
+  const numeric = Number(value)
+  if (Number.isNaN(numeric)) return '数据缺失'
+  if (numeric <= 0) return '未丢失体重'
+  return `${numeric}%`
+}
+
+function glimBmiText(value) {
+  if (value?.bmi === null || value?.bmi === undefined) return '数据缺失'
+  return String(value.bmi)
+}
+
+function glimDiagnosisReasons(value) {
+  if (!value) return []
+  if (!value.is_malnourished) return [value.message]
+
+  const severeReasons = []
+  const moderateReasons = []
+  const age = Number(patientInfo.age)
+  const bmi = Number(value.bmi)
+  const loss6m = value.weight_loss_6m_pct === null || value.weight_loss_6m_pct === undefined ? null : Number(value.weight_loss_6m_pct)
+  const lossOver6m = value.weight_loss_over6m_pct === null || value.weight_loss_over6m_pct === undefined ? null : Number(value.weight_loss_over6m_pct)
+  const muscleLoss = draftData.glim_form?.muscleLoss
+
+  if (loss6m !== null) {
+    if (loss6m > 10) severeReasons.push(`6个月内体重丢失${loss6m}%，超过10%，符合重度营养不良（2期）表型标准。`)
+    else if (loss6m >= 5) moderateReasons.push(`6个月内体重丢失${loss6m}%，在5%～10%范围，符合中度营养不良（1期）表型标准。`)
+  }
+  if (lossOver6m !== null) {
+    if (lossOver6m > 20) severeReasons.push(`6个月以上体重丢失${lossOver6m}%，超过20%，符合重度营养不良（2期）表型标准。`)
+    else if (lossOver6m >= 10) moderateReasons.push(`6个月以上体重丢失${lossOver6m}%，在10%～20%范围，符合中度营养不良（1期）表型标准。`)
+  }
+  if (!Number.isNaN(age) && !Number.isNaN(bmi)) {
+    if (age < 70 && bmi < 18.5) severeReasons.push(`70岁以下BMI ${bmi}kg/m²，低于18.5kg/m²，符合重度营养不良（2期）表型标准。`)
+    else if (age < 70 && bmi < 20) moderateReasons.push(`70岁以下BMI ${bmi}kg/m²，低于20kg/m²，符合中度营养不良（1期）表型标准。`)
+    else if (age >= 70 && bmi < 20) severeReasons.push(`70岁及以上BMI ${bmi}kg/m²，低于20kg/m²，符合重度营养不良（2期）表型标准。`)
+    else if (age >= 70 && bmi < 22) moderateReasons.push(`70岁及以上BMI ${bmi}kg/m²，低于22kg/m²，符合中度营养不良（1期）表型标准。`)
+  }
+  if (muscleLoss === 'severe') severeReasons.push('重度肌肉减少，符合重度营养不良（2期）表型标准。')
+  else if (muscleLoss === 'mild_moderate') moderateReasons.push('轻至中度肌肉减少，符合中度营养不良（1期）表型标准。')
+
+  if (value.severity?.includes('重度')) return severeReasons.length ? severeReasons : value.phenotypic_criteria_triggered
+  if (value.severity?.includes('中度')) return moderateReasons.length ? moderateReasons : value.phenotypic_criteria_triggered
+
+  const reasons = [...severeReasons, ...moderateReasons]
+  return reasons.length ? reasons : value.phenotypic_criteria_triggered
+}
+
+function formatIntakeFraction(value) {
+  if (value === "" || value === null || value === undefined) return "-"
+  const labels = { 0: "完全不进食", 25: "占正常进食的1/4", 50: "占正常进食的1/2", 75: "占正常进食的3/4", 100: "正常进食" }
+  const numeric = Number(value)
+  return labels[numeric] || String(numeric / 100)
+}
 </script>
 
 <template>
@@ -395,8 +530,9 @@ function percent(value) {
       <WeightRecordTable :key="`weight-${clearToken}`" :model-value="weightRecords" :show-errors="showErrors" :visible-months="step1VisibleMonths" :required-months="step1RequiredMonths" @update:model-value="updateWeights" />
       <IntakeRecord :key="`intake-${clearToken}`" :weeks="intakeRecords" :show-errors="showErrors" @update:weeks="updateWeeks" @update:last-week="updateLastWeek" />
       <NRS2002Form ref="nrsFormRef" :patient="patientInfo" :weights="weightRecords" :intake-last-week="intakeLastWeek" :diseases="nrsDiseases" :show-submit="false" @validation-failed="markValidationFailed" @assessed="setNrsResult" />
+      <p v-if="validationMessage && currentStep === 1" class="field-error">{{ validationMessage }}</p>
       <div class="step-actions">
-        <button class="primary-button" type="button" :disabled="!step1Ready" @click="submitNrs">开始评估</button>
+        <button class="primary-button" type="button" @click="submitNrs">开始评估</button>
         <button v-if="nrs2002Result" class="primary-button" type="button" @click="currentStep = 2">下一步</button>
       </div>
     </section>
@@ -406,17 +542,18 @@ function percent(value) {
         <div class="section-title-row"><div><p class="section-kicker">Summary</p><h2>步骤1数据摘要</h2></div></div>
         <div class="result-metrics three">
           <div><span>体重数据</span><strong>已从步骤1读取</strong></div>
-          <div><span>摄食量</span><strong>最近一周 {{ intakeLastWeek || '-' }}%</strong></div>
+          <div><span>摄食量</span><strong>最近一周 {{ formatIntakeFraction(intakeLastWeek) }}</strong></div>
           <div><span>3个月体重</span><strong>{{ weightRecords['3'] || '可在下方补填' }}{{ weightRecords['3'] ? 'kg' : '' }}</strong></div>
         </div>
       </section>
-      <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="step2VisibleMonths" :required-months="step2RequiredMonths" @update:model-value="updateWeights" />
+      <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="step2VisibleMonths" :required-months="step2RequiredMonths" :readonly-months="[0]" @update:model-value="updateWeights" />
       <MNASFForm ref="mnaFormRef" :patient="patientInfo" :weights="weightRecords" :intake-last-week="intakeLastWeek" :show-submit="false" @validation-failed="markValidationFailed" @highlight-calf="showErrors = true" @assessed="setMnaResult" />
+      <p v-if="validationMessage && currentStep === 2" class="field-error">{{ validationMessage }}</p>
       <div class="step-actions split-actions">
         <button class="secondary-button" type="button" @click="goPrevious">上一步</button>
         <span class="action-spacer"></span>
         <button class="secondary-button" type="button" @click="skipMna">跳过此步骤</button>
-        <button class="primary-button" type="button" :disabled="!step2Ready" @click="submitMna">开始评估</button>
+        <button class="primary-button" type="button" @click="submitMna">开始评估</button>
         <button v-if="mnaSFResult" class="primary-button" type="button" @click="currentStep = 3">下一步</button>
       </div>
     </section>
@@ -446,15 +583,16 @@ function percent(value) {
         <div class="result-metrics three">
           <div><span>当前体重</span><strong>已从步骤1读取</strong></div>
           <div><span>0个月</span><strong>{{ weightRecords['0'] || '-' }}kg</strong></div>
-          <div><span>6/12个月</span><strong>{{ weightRecords['6'] || '待补填' }}{{ weightRecords['6'] ? 'kg' : '' }} / {{ weightRecords['12'] || '待补填' }}{{ weightRecords['12'] ? 'kg' : '' }}</strong></div>
+          <div><span>6个月以内/6个月以上</span><strong>{{ weightRecords['6'] || '选填' }}{{ weightRecords['6'] ? 'kg' : '' }} / {{ weightRecords['12'] || '选填' }}{{ weightRecords['12'] ? 'kg' : '' }}</strong></div>
         </div>
       </section>
-      <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="step4VisibleMonths" :required-months="step4RequiredMonths" :readonly-months="[0]" @update:model-value="updateWeights" />
+      <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="step4VisibleMonths" :required-months="step4RequiredMonths" :readonly-months="[0]" :month-labels="step4MonthLabels" @update:model-value="updateWeights" />
       <GLIMForm ref="glimFormRef" :patient="patientInfo" :weights="weightRecords" :diseases="diseases" :glim-config="glimConfig" :show-submit="false" @validation-failed="markValidationFailed" @assessed="setGlimResult" />
+      <p v-if="validationMessage && currentStep === 4" class="field-error">{{ validationMessage }}</p>
       <div class="step-actions split-actions">
         <button class="secondary-button" type="button" @click="goPrevious">上一步</button>
         <span class="action-spacer"></span>
-        <button class="primary-button" type="button" :disabled="!step4Ready" @click="submitGlim">开始评估</button>
+        <button class="primary-button" type="button" @click="submitGlim">开始评估</button>
         <button v-if="glimResult" class="primary-button" type="button" @click="currentStep = 5">查看综合结果</button>
       </div>
     </section>
@@ -470,24 +608,29 @@ function percent(value) {
 
       <div class="final-results-grid">
         <section v-if="nrs2002Result && finalResultSelection.nrs2002" class="assessment-result" :class="nrs2002Result.has_risk ? 'risk' : 'good'">
-          <div class="score-hero"><span>NRS-2002</span><strong>{{ nrs2002Result.total_score }}</strong><em>{{ nrs2002Result.risk_level }}</em></div>
-          <div class="result-metrics three"><div><span>营养状态受损</span><strong>{{ nrs2002Result.nutrition_score }}分</strong></div><div><span>疾病严重程度</span><strong>{{ nrs2002Result.disease_score }}分</strong></div><div><span>年龄</span><strong>{{ nrs2002Result.age_score }}分</strong></div></div>
-          <p class="message-text">{{ nrs2002Result.message }}</p>
+          <h3 class="final-result-title">NRS-2002 营养风险筛查</h3>
+          <div class="score-hero"><span>总分</span><strong>{{ nrs2002Result.total_score }}</strong><em>{{ nrs2002Result.risk_level }}</em></div>
+          <div class="result-metrics three"><div><span>营养状态受损</span><strong>{{ nrs2002Result.nutrition_score }}分</strong><p v-for="reason in nrsMetricReasons(nrs2002Result, 'nutrition')" :key="reason" class="metric-reason">{{ reason }}</p></div><div><span>疾病严重程度</span><strong>{{ nrs2002Result.disease_score }}分</strong><p v-for="reason in nrsMetricReasons(nrs2002Result, 'disease')" :key="reason" class="metric-reason">{{ reason }}</p></div><div><span>年龄</span><strong>{{ nrs2002Result.age_score }}分</strong><p v-for="reason in nrsMetricReasons(nrs2002Result, 'age')" :key="reason" class="metric-reason">{{ reason }}</p></div></div>
+          <div class="result-metrics nrs-detail-metrics"><div><span>1个月内体重丢失</span><strong>{{ nrsLossText(nrs2002Result.weight_loss_details?.['1m_loss_pct']) }}</strong></div><div><span>2个月内体重丢失</span><strong>{{ nrsLossText(nrs2002Result.weight_loss_details?.['2m_loss_pct']) }}</strong></div><div><span>3个月内体重丢失</span><strong>{{ nrsLossText(nrs2002Result.weight_loss_details?.['3m_loss_pct']) }}</strong></div><div><span>BMI</span><strong>{{ nrsBmiText(nrs2002Result) }}</strong></div></div>
+          <p class="message-text">{{ nrs2002Result.recommendation }}</p><p class="message-text">{{ nrs2002Result.message }}</p>
         </section>
 
-        <section v-if="mnaSFResult && !skippedMnaSF && finalResultSelection.mnaSF" class="assessment-result" :class="mnaSFResult.level === '营养正常' ? 'good' : mnaSFResult.level === '营养不良风险' ? 'caution' : 'risk'">
-          <div class="score-hero"><span>MNA-SF</span><strong>{{ mnaSFResult.total_score }}/14</strong><em>{{ mnaSFResult.level }}</em></div>
+        <section v-if="mnaSFResult && !skippedMnaSF && finalResultSelection.mnaSF" class="assessment-result" :class="mnaLevelClass(mnaSFResult.level)">
+          <h3 class="final-result-title">MNA-SF 微型营养评估</h3>
+          <div class="score-hero"><span>总分</span><strong>{{ mnaSFResult.total_score }}/14</strong><em>{{ mnaSFResult.level }}</em></div>
           <div class="progress-track"><span class="progress-fill success" :style="{ width: `${Math.min(100, mnaSFResult.total_score / 14 * 100)}%` }"></span></div>
+          <div class="result-metrics three"><div v-for="(score, key) in mnaSFResult.score_breakdown" :key="key"><span>{{ mnaMetricLabel(key) }}</span><strong>{{ score }}分</strong><p v-if="mnaMetricReason(mnaSFResult, key)" class="metric-reason">{{ mnaMetricReason(mnaSFResult, key) }}</p></div></div>
           <p class="message-text">{{ mnaSFResult.message }}</p>
         </section>
 
-        <ResultPanel v-if="imageResult && finalResultSelection.image" :result="imageResult" :show-actions="false" />
+        <ResultPanel v-if="imageResult && finalResultSelection.image" :result="imageResult" :show-actions="false" panel-title="面部图像筛查" />
 
         <section v-if="glimResult && finalResultSelection.glim" class="assessment-result" :class="glimResult.is_malnourished ? 'risk' : 'good'">
-          <div class="score-hero"><span>GLIM</span><strong>{{ glimResult.is_malnourished ? '营养不良' : '未诊断营养不良' }}</strong><em v-if="glimResult.severity">{{ glimResult.severity }}</em></div>
+          <h3 class="final-result-title">GLIM 营养不良评定</h3>
+          <div class="score-hero"><strong>{{ glimResult.is_malnourished ? '营养不良' : '未诊断营养不良' }}</strong><em v-if="glimResult.severity" :class="glimResult.severity.includes('重度') ? 'severity-red' : 'severity-orange'">{{ glimResult.severity }}</em></div>
+          <div class="result-metrics glim-result-metrics"><div><span>诊断依据</span><p v-for="reason in glimDiagnosisReasons(glimResult)" :key="reason" class="metric-reason">{{ reason }}</p></div></div>
           <div class="criteria-columns"><div><h3>表型标准</h3><span v-for="item in glimResult.phenotypic_criteria_triggered" :key="item" class="tag-pill">{{ item }}</span><p v-if="!glimResult.phenotypic_criteria_triggered.length">未触发</p></div><div><h3>病因标准</h3><div v-for="group in formatEtiologicalCriteria(glimResult.etiological_criteria_triggered)" :key="group.title" class="criteria-group"><h4>{{ group.title }}</h4><span v-for="option in group.options" :key="`${group.title}-${option}`" class="tag-pill">{{ option }}</span></div><p v-if="!glimResult.etiological_criteria_triggered.length">未触发</p></div></div>
-          <div class="result-metrics three"><div><span>6个月内体重丢失</span><strong>{{ glimResult.weight_loss_6m_pct }}%</strong></div><div><span>6个月以上体重丢失</span><strong>{{ glimResult.weight_loss_over6m_pct }}%</strong></div><div><span>BMI</span><strong>{{ glimResult.bmi }}</strong></div></div>
-          <p class="message-text">{{ glimResult.message }}</p>
+          <div class="result-metrics detail-metrics"><div><span>6个月内体重丢失</span><strong>{{ glimLossText(glimResult.weight_loss_6m_pct) }}</strong></div><div><span>6个月以上体重丢失</span><strong>{{ glimLossText(glimResult.weight_loss_over6m_pct) }}</strong></div><div><span>BMI</span><strong>{{ glimBmiText(glimResult) }}</strong></div></div>
         </section>
       </div>
       <div class="step-actions split-actions">
@@ -644,6 +787,13 @@ function percent(value) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
   gap: 18px;
+}
+
+.final-result-title {
+  margin: 0 0 14px;
+  color: #10253f;
+  font-size: 16px;
+  font-weight: 900;
 }
 
 /* 综合结果卡片统一作为网格项展示，避免 ResultPanel 的全局上边距造成错位。 */

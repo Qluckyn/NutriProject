@@ -160,18 +160,28 @@
   "nrs2002": {
     "diseases": [
       {
+        "id": "hip_fracture",
+        "name": "髋骨折",
+        "nrs_score": 1
+      },
+      {
+        "id": "chronic_disease_acute_complication",
+        "name": "慢性疾病有急性并发症",
+        "nrs_score": 1
+      },
+      {
         "id": "liver_cirrhosis",
         "name": "肝硬化",
         "nrs_score": 1
       },
       {
         "id": "copd",
-        "name": "慢性阻塞性肺病",
+        "name": "慢性阻塞性疾病",
         "nrs_score": 1
       },
       {
-        "id": "hemodialysis",
-        "name": "血液透析",
+        "id": "long_term_hemodialysis",
+        "name": "长期血液透析",
         "nrs_score": 1
       },
       {
@@ -180,8 +190,8 @@
         "nrs_score": 1
       },
       {
-        "id": "general_tumor",
-        "name": "一般肿瘤",
+        "id": "malignant_tumor",
+        "name": "恶性肿瘤",
         "nrs_score": 1
       },
       {
@@ -191,7 +201,7 @@
       },
       {
         "id": "stroke",
-        "name": "脑卒中",
+        "name": "卒中",
         "nrs_score": 2
       },
       {
@@ -200,8 +210,8 @@
         "nrs_score": 2
       },
       {
-        "id": "hematologic_tumor",
-        "name": "血液系统肿瘤",
+        "id": "hematologic_worsened_tumor",
+        "name": "血液系统恶化肿瘤",
         "nrs_score": 2
       },
       {
@@ -218,76 +228,6 @@
         "id": "icu",
         "name": "重症监护（APACHE>10）",
         "nrs_score": 3
-      },
-      {
-        "id": "severe_infection",
-        "name": "严重感染",
-        "nrs_score": 2
-      },
-      {
-        "id": "burn",
-        "name": "烧伤",
-        "nrs_score": 2
-      },
-      {
-        "id": "trauma",
-        "name": "创伤",
-        "nrs_score": 2
-      },
-      {
-        "id": "short_bowel",
-        "name": "短肠综合征",
-        "nrs_score": 1
-      },
-      {
-        "id": "pancreatic_insufficiency",
-        "name": "胰腺功能不全",
-        "nrs_score": 1
-      },
-      {
-        "id": "post_bariatric",
-        "name": "减肥手术后",
-        "nrs_score": 1
-      },
-      {
-        "id": "esophageal_stricture",
-        "name": "食管狭窄",
-        "nrs_score": 1
-      },
-      {
-        "id": "gastroparesis",
-        "name": "胃轻瘫",
-        "nrs_score": 1
-      },
-      {
-        "id": "intestinal_obstruction",
-        "name": "肠梗阻",
-        "nrs_score": 1
-      },
-      {
-        "id": "heart_failure",
-        "name": "充血性心衰",
-        "nrs_score": 1
-      },
-      {
-        "id": "ckd",
-        "name": "慢性肾脏疾病",
-        "nrs_score": 1
-      },
-      {
-        "id": "chronic_liver",
-        "name": "慢性肝病（肝硬化/肝源性腹水）",
-        "nrs_score": 1
-      },
-      {
-        "id": "rheumatoid_arthritis",
-        "name": "类风湿关节炎",
-        "nrs_score": 1
-      },
-      {
-        "id": "malignant_tumor",
-        "name": "恶性肿瘤（癌症）",
-        "nrs_score": 2
       }
     ]
   },

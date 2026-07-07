@@ -100,6 +100,25 @@ function levelClass(level) {
   return 'risk'
 }
 
+const evidenceKeyOrder = ['q1_appetite', 'q2_weight_loss', 'q3_mobility', 'q4_stress', 'q5_mental', 'q6_bmi_or_calf']
+const metricLabels = {
+  q1_appetite: '摄食量',
+  q2_weight_loss: '近3个月体重下降',
+  q3_mobility: '活动能力',
+  q4_stress: '心理创伤或急性疾病',
+  q5_mental: '精神心理状况',
+  q6_bmi_or_calf: 'BMI/小腿围',
+}
+
+function mnaMetricLabel(key) {
+  return metricLabels[key] || key
+}
+
+function mnaMetricReason(value, key) {
+  const index = evidenceKeyOrder.indexOf(key)
+  return index === -1 ? '' : value?.score_evidence?.[index]?.reason || ''
+}
+
 defineExpose({ submit })
 
 function resetResult() {
@@ -139,6 +158,13 @@ watch(result, (value) => {
       <button v-if="showSubmit" class="primary-button" type="button" :disabled="loading || !formReady" @click="submit"><span v-if="loading" class="spinner" aria-hidden="true"></span>{{ loading ? '评估中...' : '开始评估 - MNA-SF' }}</button>
       <p v-if="touched && !formReady" class="field-error">仍有必填项未完成。</p>
     </div>
-    <section v-if="result" class="assessment-result" :class="levelClass(result.level)"><div class="score-hero"><span>总分</span><strong>{{ result.total_score }}/14</strong><em>{{ result.level }}</em></div><div class="progress-track"><span class="progress-fill success" :style="{ width: `${Math.min(100, result.total_score / 14 * 100)}%` }"></span></div><div class="result-metrics three"><div v-for="(score, key) in result.score_breakdown" :key="key"><span>{{ key }}</span><strong>{{ score }}分</strong></div><div><span>{{ useBmi === 'true' ? 'BMI' : '小腿围' }}</span><strong>{{ useBmi === 'true' ? result.bmi : calfValue }}</strong></div><div><span>3个月体重下降</span><strong>{{ result.weight_loss_3m_kg }}kg</strong></div></div><p class="message-text">{{ result.message }}</p><button class="secondary-button" type="button" @click="resetResult">重新评估</button></section>
+    <section v-if="result" class="assessment-result" :class="levelClass(result.level)">
+      <div class="score-hero"><span>总分</span><strong>{{ result.total_score }}/14</strong><em>{{ result.level }}</em></div>
+      <div class="progress-track"><span class="progress-fill success" :style="{ width: `${Math.min(100, result.total_score / 14 * 100)}%` }"></span></div>
+      <div class="result-metrics three">
+        <div v-for="(score, key) in result.score_breakdown" :key="key"><span>{{ mnaMetricLabel(key) }}</span><strong>{{ score }}分</strong><p v-if="mnaMetricReason(result, key)" class="metric-reason">{{ mnaMetricReason(result, key) }}</p></div>
+      </div>
+      <p class="message-text">{{ result.message }}</p><button class="secondary-button" type="button" @click="resetResult">重新评估</button>
+    </section>
   </section>
 </template>

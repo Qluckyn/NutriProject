@@ -22,6 +22,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  monthLabels: {
+    type: Object,
+    default: () => ({}),
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -57,6 +61,10 @@ function missingRequired(month) {
 
 function isReadonly(month) {
   return readonlyMonthKeys.value.includes(month)
+}
+
+function monthLabel(month) {
+  return props.monthLabels[month] || `${month}个月`
 }
 
 onMounted(() => {
@@ -102,7 +110,7 @@ watch(
         </thead>
         <tbody>
           <tr v-for="month in visibleMonthKeys" :key="month" :class="{ invalid: missingRequired(month) }">
-            <td>{{ month }}个月</td>
+            <td>{{ monthLabel(month) }}</td>
             <td>
               <input
                 :value="modelValue[month]"

@@ -48,8 +48,8 @@ DRAFT_IMAGE_DIR = "./draft_images"
 DRAFT_VIEWS = {"front", "left", "right"}
 
 DISEASES_PATH = "./diseases.json"
-REQUIRED_NRS_MONTHS = ("0", "1", "2", "3")
-REQUIRED_GLIM_MONTHS = ("0", "6", "12")
+REQUIRED_NRS_MONTHS = ("0",)
+REQUIRED_GLIM_MONTHS = ("0",)
 
 GLIM_GI_SYMPTOM_LABELS = {
     "dysphagia": "吞咽困难",

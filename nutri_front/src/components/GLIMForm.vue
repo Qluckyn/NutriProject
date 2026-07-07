@@ -55,7 +55,7 @@ const acuteDiseaseOptions = computed(() => props.glimConfig?.inflammation_or_dis
 const malignantTumorOption = computed(() => (props.glimConfig?.inflammation_or_disease_burden?.chronic || diseaseOptions(['malignant_tumor'])).find((item) => item.id === 'malignant_tumor') || diseaseOptions(['malignant_tumor'])[0])
 const chronicDiseaseOptions = computed(() => (props.glimConfig?.inflammation_or_disease_burden?.chronic || diseaseOptions(['copd', 'heart_failure', 'ckd', 'chronic_liver', 'liver_cirrhosis', 'rheumatoid_arthritis', 'other'])).filter((item) => item.id !== 'malignant_tumor'))
 const malignantTumorSelected = computed(() => chronicDiseaseIds.value.includes('malignant_tumor'))
-const formReady = computed(() => Boolean(props.patient.age && props.patient.height && props.weights['0'] && props.weights['6'] && props.weights['12']))
+const formReady = computed(() => Boolean(props.patient.age && props.patient.height && props.weights['0']))
 
 function diseaseOptions(ids) {
   return ids.map((id) => props.diseases.find((item) => item.id === id) || { id, name: fallbackDiseaseName(id) })
@@ -120,7 +120,6 @@ function persistForm() {
   draftContext.saveDraft()
 }
 
-
 function formatEtiologicalCriteria(items = []) {
   return items.map((item) => {
     const text = String(item)
@@ -141,13 +140,15 @@ function formatEtiologicalCriteria(items = []) {
   })
 }
 
+
+
 function buildPayload() {
   const reducedIntake = intakeUnder50Over1w.value || anyIntakeReductionOver2w.value || giSymptoms.value.length > 0 || nutritionImpactConditions.value.length > 0
   return {
     age: Number(props.patient.age),
     height: Number(props.patient.height),
     weight_records: Object.fromEntries(Object.entries(props.weights).filter(([, value]) => value !== '').map(([key, value]) => [key, Number(value)])),
-    muscle_loss: muscleLoss.value,
+    muscle_loss: muscleLoss.value === 'unknown' ? 'none' : muscleLoss.value,
     disease_ids: [],
     reduced_intake: reducedIntake,
     intake_under_50_over_1w: intakeUnder50Over1w.value,
@@ -168,7 +169,7 @@ async function submit() {
   touched.value = true
   if (!formReady.value) {
     emit('validation-failed')
-    errorMessage.value = '请先补全年龄、身高、当前体重、6个月前体重和12个月前体重。'
+    errorMessage.value = '请先补全年龄、身高和当前体重。'
     return
   }
   loading.value = true
@@ -193,6 +194,58 @@ function resetResult() {
   result.value = null
   emit('assessed', null)
 }
+
+
+
+
+function glimLossText(value) {
+  if (value === null || value === undefined) return '数据缺失'
+  const numeric = Number(value)
+  if (Number.isNaN(numeric)) return '数据缺失'
+  if (numeric <= 0) return '未丢失体重'
+  return `${numeric}%`
+}
+
+function glimBmiText(value) {
+  if (value?.bmi === null || value?.bmi === undefined) return '数据缺失'
+  return String(value.bmi)
+}
+
+const glimDiagnosisReasons = computed(() => {
+  const value = result.value
+  if (!value) return []
+  if (!value.is_malnourished) return [value.message]
+
+  const severeReasons = []
+  const moderateReasons = []
+  const age = Number(props.patient.age)
+  const bmi = Number(value.bmi)
+  const loss6m = value.weight_loss_6m_pct === null || value.weight_loss_6m_pct === undefined ? null : Number(value.weight_loss_6m_pct)
+  const lossOver6m = value.weight_loss_over6m_pct === null || value.weight_loss_over6m_pct === undefined ? null : Number(value.weight_loss_over6m_pct)
+
+  if (loss6m !== null) {
+    if (loss6m > 10) severeReasons.push(`6个月内体重丢失${loss6m}%，超过10%，符合重度营养不良（2期）表型标准。`)
+    else if (loss6m >= 5) moderateReasons.push(`6个月内体重丢失${loss6m}%，在5%～10%范围，符合中度营养不良（1期）表型标准。`)
+  }
+  if (lossOver6m !== null) {
+    if (lossOver6m > 20) severeReasons.push(`6个月以上体重丢失${lossOver6m}%，超过20%，符合重度营养不良（2期）表型标准。`)
+    else if (lossOver6m >= 10) moderateReasons.push(`6个月以上体重丢失${lossOver6m}%，在10%～20%范围，符合中度营养不良（1期）表型标准。`)
+  }
+  if (!Number.isNaN(age) && !Number.isNaN(bmi)) {
+    if (age < 70 && bmi < 18.5) severeReasons.push(`70岁以下BMI ${bmi}kg/m²，低于18.5kg/m²，符合重度营养不良（2期）表型标准。`)
+    else if (age < 70 && bmi < 20) moderateReasons.push(`70岁以下BMI ${bmi}kg/m²，低于20kg/m²，符合中度营养不良（1期）表型标准。`)
+    else if (age >= 70 && bmi < 20) severeReasons.push(`70岁及以上BMI ${bmi}kg/m²，低于20kg/m²，符合重度营养不良（2期）表型标准。`)
+    else if (age >= 70 && bmi < 22) moderateReasons.push(`70岁及以上BMI ${bmi}kg/m²，低于22kg/m²，符合中度营养不良（1期）表型标准。`)
+  }
+  if (muscleLoss.value === 'severe') severeReasons.push('重度肌肉减少，符合重度营养不良（2期）表型标准。')
+  else if (muscleLoss.value === 'mild_moderate') moderateReasons.push('轻至中度肌肉减少，符合中度营养不良（1期）表型标准。')
+
+  if (value.severity?.includes('重度')) return severeReasons.length ? severeReasons : value.phenotypic_criteria_triggered
+  if (value.severity?.includes('中度')) return moderateReasons.length ? moderateReasons : value.phenotypic_criteria_triggered
+
+  const reasons = [...severeReasons, ...moderateReasons]
+  return reasons.length ? reasons : value.phenotypic_criteria_triggered
+})
 
 onMounted(() => {
   restoreFromDraft()
@@ -231,7 +284,7 @@ watch(result, (value) => {
   <section class="scale-form">
     <div class="form-card">
       <div class="section-title-row"><div><p class="section-kicker">GLIM</p><h2>营养不良评定标准</h2></div></div>
-      <div class="field-block"><span>肌肉减少程度</span><small>请根据人体成分分析（BIA/DXA等）结果选择</small><div class="radio-stack"><label><input v-model="muscleLoss" type="radio" value="none" />无肌肉减少</label><label><input v-model="muscleLoss" type="radio" value="mild_moderate" />轻至中度减少</label><label><input v-model="muscleLoss" type="radio" value="severe" />重度减少</label></div></div>
+      <div class="field-block"><span>肌肉减少程度</span><small>请根据人体成分分析（BIA/DXA等）结果选择</small><div class="radio-stack"><label><input v-model="muscleLoss" type="radio" value="unknown" />不详</label><label><input v-model="muscleLoss" type="radio" value="none" />无肌肉减少</label><label><input v-model="muscleLoss" type="radio" value="mild_moderate" />轻至中度减少</label><label><input v-model="muscleLoss" type="radio" value="severe" />重度减少</label></div></div>
 
       <div class="disease-section"><h3>摄食减少或消化吸收障碍</h3><label class="check-option"><input v-model="intakeUnder50Over1w" type="checkbox" /><span>摄入量≤50%的能量需求超过一周</span></label><label class="check-option"><input v-model="anyIntakeReductionOver2w" type="checkbox" /><span>任何摄入量减少超过2周</span></label><div class="disease-group"><h4>任何影响消化吸收的慢性胃肠状况</h4><label v-for="item in giSymptomOptions" :key="item.id" class="check-option"><input v-model="giSymptoms" type="checkbox" :value="item.id" /><span>{{ item.name }}</span></label></div><div class="disease-group"><h4>有关疾病</h4><label v-for="item in nutritionImpactOptions" :key="item.id" class="check-option"><input v-model="nutritionImpactConditions" type="checkbox" :value="item.id" /><span>{{ item.name }}</span></label></div></div>
 
@@ -240,6 +293,6 @@ watch(result, (value) => {
       <button v-if="showSubmit" class="primary-button" type="button" :disabled="loading || !formReady" @click="submit"><span v-if="loading" class="spinner" aria-hidden="true"></span>{{ loading ? '评估中...' : '开始评估 - GLIM' }}</button>
       <p v-if="touched && !formReady" class="field-error">仍有必填项未完成。</p>
     </div>
-    <section v-if="result" class="assessment-result" :class="result.is_malnourished ? 'risk' : 'good'"><div class="score-hero"><span>诊断结果</span><strong>{{ result.is_malnourished ? '营养不良' : '未诊断营养不良' }}</strong><em v-if="result.severity" :class="result.severity.includes('重度') ? 'severity-red' : 'severity-orange'">{{ result.severity }}</em></div><div class="criteria-columns"><div><h3>表型标准</h3><span v-for="item in result.phenotypic_criteria_triggered" :key="item" class="tag-pill">{{ item }}</span><p v-if="!result.phenotypic_criteria_triggered.length">未触发</p></div><div><h3>病因标准</h3><div v-for="group in formatEtiologicalCriteria(result.etiological_criteria_triggered)" :key="group.title" class="criteria-group"><h4>{{ group.title }}</h4><span v-for="option in group.options" :key="`${group.title}-${option}`" class="tag-pill">{{ option }}</span></div><p v-if="!result.etiological_criteria_triggered.length">未触发</p></div></div><div class="result-metrics three"><div><span>6个月内体重丢失</span><strong>{{ result.weight_loss_6m_pct }}%</strong></div><div><span>6个月以上体重丢失</span><strong>{{ result.weight_loss_over6m_pct }}%</strong></div><div><span>BMI</span><strong>{{ result.bmi }}</strong></div></div><p class="message-text">{{ result.message }}</p><button class="secondary-button" type="button" @click="resetResult">重新评估</button></section>
+    <section v-if="result" class="assessment-result" :class="result.is_malnourished ? 'risk' : 'good'"><div class="score-hero"><strong>{{ result.is_malnourished ? '营养不良' : '未诊断营养不良' }}</strong><em v-if="result.severity" :class="result.severity.includes('重度') ? 'severity-red' : 'severity-orange'">{{ result.severity }}</em></div><div class="result-metrics glim-result-metrics"><div><span>诊断依据</span><p v-for="reason in glimDiagnosisReasons" :key="reason" class="metric-reason">{{ reason }}</p></div></div><div class="criteria-columns"><div><h3>表型标准</h3><span v-for="item in result.phenotypic_criteria_triggered" :key="item" class="tag-pill">{{ item }}</span><p v-if="!result.phenotypic_criteria_triggered.length">未触发</p></div><div><h3>病因标准</h3><div v-for="group in formatEtiologicalCriteria(result.etiological_criteria_triggered)" :key="group.title" class="criteria-group"><h4>{{ group.title }}</h4><span v-for="option in group.options" :key="`${group.title}-${option}`" class="tag-pill">{{ option }}</span></div><p v-if="!result.etiological_criteria_triggered.length">未触发</p></div></div><div class="result-metrics detail-metrics"><div><span>6个月内体重丢失</span><strong>{{ glimLossText(result.weight_loss_6m_pct) }}</strong></div><div><span>6个月以上体重丢失</span><strong>{{ glimLossText(result.weight_loss_over6m_pct) }}</strong></div><div><span>BMI</span><strong>{{ glimBmiText(result) }}</strong></div></div><button class="secondary-button" type="button" @click="resetResult">重新评估</button></section>
   </section>
 </template>

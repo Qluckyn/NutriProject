@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from fastapi import HTTPException
 
@@ -18,6 +18,10 @@ from services.diseases_service import (
 
 def raise_zh_422(message: str) -> None:
     raise HTTPException(status_code=422, detail=message)
+
+
+def round1(value: float) -> float:
+    return round(float(value), 1)
 
 
 def validate_weight_records(records: Dict[str, float], required_months: Tuple[str, ...]) -> None:
@@ -52,45 +56,93 @@ def calc_loss_pct(records: Dict[str, float], month: str) -> float:
     return (previous - current) / previous * 100
 
 
-def nrs_nutrition_score(payload: NRS2002Request) -> Tuple[int, Dict[str, float], float]:
+def optional_loss_pct(records: Dict[str, float], month: str) -> Optional[float]:
+    if month not in records or records[month] is None:
+        return None
+    return calc_loss_pct(records, month)
+
+
+def intake_label(value: float) -> str:
+    labels = {
+        0: "完全不进食",
+        25: "占正常进食的1/4",
+        50: "占正常进食的1/2",
+        75: "占正常进食的3/4",
+        100: "正常进食",
+    }
+    numeric = round(float(value), 4)
+    return labels.get(int(numeric), f"占正常进食的{numeric}%")
+
+
+def nrs_nutrition_score(payload: NRS2002Request) -> Tuple[int, Dict[str, Optional[float]], float, List[Dict[str, object]]]:
     records = payload.weight_records
-    loss_1m = calc_loss_pct(records, "1")
-    loss_2m = calc_loss_pct(records, "2")
-    loss_3m = calc_loss_pct(records, "3")
+    loss_1m = optional_loss_pct(records, "1")
+    loss_2m = optional_loss_pct(records, "2")
+    loss_3m = optional_loss_pct(records, "3")
 
     weight_score = 0
+    weight_reason = "1/2/3个月前体重未填写，体重下降项不参与评分。"
     # if loss_1m > 5 and payload.general_condition_impaired:
-    if loss_1m > 5:
+    if loss_1m is not None and loss_1m > 5:
         weight_score = 3
+        weight_reason = f"1个月体重下降{round1(loss_1m)}%，超过5%，触发3分。"
     # elif loss_2m > 5 and payload.general_condition_impaired:
-    elif loss_2m > 5:
+    elif loss_2m is not None and loss_2m > 5:
         weight_score = 2
-    elif loss_3m > 5:
+        weight_reason = f"2个月体重下降{round1(loss_2m)}%，超过5%，触发2分。"
+    elif loss_3m is not None and loss_3m > 5:
         weight_score = 1
+        weight_reason = f"3个月体重下降{round1(loss_3m)}%，超过5%，触发1分。"
+    elif any(loss is not None for loss in (loss_1m, loss_2m, loss_3m)):
+        parts = []
+        if loss_1m is not None:
+            parts.append(f"1个月{round1(loss_1m)}%")
+        if loss_2m is not None:
+            parts.append(f"2个月{round1(loss_2m)}%")
+        if loss_3m is not None:
+            parts.append(f"3个月{round1(loss_3m)}%")
+        weight_reason = "已填写体重下降：" + "、".join(parts) + "，均未触发体重下降评分。"
 
     bmi = calc_bmi(records["0"], payload.height)
     bmi_score = 0
     if bmi < 18.5 and payload.general_condition_impaired:
         bmi_score = 3
+        bmi_reason = f"BMI为{round1(bmi)}，低于18.5，且全身情况受损，触发3分。"
     elif 18.5 <= bmi <= 20.5 and payload.general_condition_impaired:
         bmi_score = 2
+        bmi_reason = f"BMI为{round1(bmi)}，位于18.5-20.5，且全身情况受损，触发2分。"
+    elif payload.general_condition_impaired:
+        bmi_reason = f"BMI为{round1(bmi)}，未达到BMI受损评分区间。"
+    else:
+        bmi_reason = f"BMI为{round1(bmi)}，但全身情况未标记为受损，BMI项不加分。"
 
     intake = payload.intake_last_week
     if intake <= 25:
         intake_score = 3
+        intake_reason = f"最近一周摄食量为{intake_label(intake)}，小于等于正常需求的1/4，触发3分。"
     elif intake <= 50:
         intake_score = 2
+        intake_reason = f"最近一周摄食量为{intake_label(intake)}，小于等于正常需求的1/2，触发2分。"
     elif intake <= 75:
         intake_score = 1
+        intake_reason = f"最近一周摄食量为{intake_label(intake)}，小于等于正常需求的3/4，触发1分。"
     else:
         intake_score = 0
+        intake_reason = f"最近一周摄食量为{intake_label(intake)}，未触发摄食量评分。"
 
+    nutrition_score = max(weight_score, bmi_score, intake_score)
     details = {
-        "1m_loss_pct": round4(loss_1m),
-        "2m_loss_pct": round4(loss_2m),
-        "3m_loss_pct": round4(loss_3m),
+        "1m_loss_pct": round1(loss_1m) if loss_1m is not None else None,
+        "2m_loss_pct": round1(loss_2m) if loss_2m is not None else None,
+        "3m_loss_pct": round1(loss_3m) if loss_3m is not None else None,
     }
-    return max(weight_score, bmi_score, intake_score), details, bmi
+    evidence = [
+        {"label": "体重下降", "score": weight_score, "triggered": weight_score > 0, "reason": weight_reason},
+        {"label": "BMI", "score": bmi_score, "triggered": bmi_score > 0, "reason": bmi_reason},
+        {"label": "摄食量", "score": intake_score, "triggered": intake_score > 0, "reason": intake_reason},
+        {"label": "最终采用", "score": nutrition_score, "triggered": nutrition_score > 0, "reason": f"营养状态受损分取体重下降、BMI、摄食量三项中的最高值：{nutrition_score}分。"},
+    ]
+    return nutrition_score, details, bmi, evidence
 
 
 def disease_score_for_nrs(disease_ids: List[str]) -> int:
@@ -100,13 +152,30 @@ def disease_score_for_nrs(disease_ids: List[str]) -> int:
     return max(int(disease_map[item].get("nrs_score", 0)) for item in disease_ids)
 
 
+def nrs_disease_evidence(disease_ids: List[str], disease_score: int) -> List[Dict[str, object]]:
+    disease_map = get_nrs_disease_map()
+    if not disease_ids:
+        return [{"label": "疾病严重程度", "score": 0, "triggered": False, "reason": "未选择NRS-2002疾病严重程度相关疾病，疾病项为0分。"}]
+    selected = [disease_map[item] for item in disease_ids]
+    selected_text = "、".join(f"{item['name']}（{int(item.get('nrs_score', 0))}分）" for item in selected)
+    return [{"label": "疾病严重程度", "score": disease_score, "triggered": disease_score > 0, "reason": f"{selected_text}；疾病严重程度取最高值{disease_score}分。"}]
+
+
+def nrs_age_evidence(age: int, age_score: int) -> List[Dict[str, object]]:
+    if age_score:
+        reason = f"年龄{age}岁，≥70岁，加1分。"
+    else:
+        reason = f"年龄{age}岁，<70岁，年龄项为0分。"
+    return [{"label": "年龄", "score": age_score, "triggered": age_score > 0, "reason": reason}]
+
+
 def assess_nrs2002(payload: NRS2002Request) -> Dict[str, object]:
     validate_weight_records(payload.weight_records, REQUIRED_NRS_MONTHS)
     unknown_nrs_ids = [item for item in payload.disease_ids if item not in get_nrs_disease_map()]
     if unknown_nrs_ids:
         raise_zh_422("NRS-2002疾病id不存在：" + "、".join(unknown_nrs_ids))
 
-    nutrition_score, loss_details, bmi = nrs_nutrition_score(payload)
+    nutrition_score, loss_details, bmi, nutrition_evidence = nrs_nutrition_score(payload)
     disease_score = disease_score_for_nrs(payload.disease_ids)
     age_score = 1 if payload.age >= 70 else 0
     total_score = nutrition_score + disease_score + age_score
@@ -125,8 +194,13 @@ def assess_nrs2002(payload: NRS2002Request) -> Dict[str, object]:
         "nutrition_score": nutrition_score,
         "disease_score": disease_score,
         "age_score": age_score,
-        "bmi": round4(bmi),
+        "bmi": round1(bmi),
         "weight_loss_details": loss_details,
+        "score_evidence": {
+            "nutrition": nutrition_evidence,
+            "disease": nrs_disease_evidence(payload.disease_ids, disease_score),
+            "age": nrs_age_evidence(payload.age, age_score),
+        },
         "has_risk": has_risk,
         "risk_level": risk_level,
         "recommendation": recommendation,
@@ -145,33 +219,55 @@ def assess_mna_sf(payload: MNASFRequest) -> Dict[str, object]:
         bmi = calc_bmi(payload.weight_records["0"], payload.height)
 
     q1 = 0 if payload.intake_last_week <= 33 else 1 if payload.intake_last_week <= 66 else 2
+    q1_reason = f"最近一周摄食量为{intake_label(payload.intake_last_week)}，对应{q1}分。"
 
     if "3" not in payload.weight_records:
         loss_kg = 0.0
         q2 = 1
+        q2_reason = "3个月前体重未填写，按体重下降未知计1分。"
     else:
         loss_kg = float(payload.weight_records["3"]) - float(payload.weight_records["0"])
         if loss_kg > 3:
             q2 = 0
+            q2_reason = f"近3个月体重下降{round4(loss_kg)}kg，超过3kg，计0分。"
         elif loss_kg > 0:
             q2 = 2
+            q2_reason = f"近3个月体重下降{round4(loss_kg)}kg，未超过3kg，计2分。"
         else:
             q2 = 3
+            q2_reason = "近3个月体重未下降或增加，计3分。"
 
+    mobility_labels = {0: "需长期卧床或坐轮椅", 1: "可下床但不能外出", 2: "可以外出"}
     q3 = payload.mobility
+    q3_reason = f"活动能力为“{mobility_labels.get(q3, '未知')}”，计{q3}分。"
+
     q4 = 0 if payload.stress_or_acute_disease else 2
+    q4_reason = "近3个月有心理创伤或急性疾病，计0分。" if payload.stress_or_acute_disease else "近3个月无心理创伤或急性疾病，计2分。"
+
+    mental_labels = {0: "严重痴呆或抑郁", 1: "轻度痴呆", 2: "无问题"}
     q5 = payload.mental_status
+    q5_reason = f"精神心理状况为“{mental_labels.get(q5, '未知')}”，计{q5}分。"
+
     if payload.use_bmi:
         if bmi < 19:
             q6 = 0
+            q6_reason = f"BMI为{round1(bmi)}，低于19，计0分。"
         elif bmi <= 21:
             q6 = 1
+            q6_reason = f"BMI为{round1(bmi)}，位于19-21，计1分。"
         elif bmi <= 23:
             q6 = 2
+            q6_reason = f"BMI为{round1(bmi)}，位于21-23，计2分。"
         else:
             q6 = 3
+            q6_reason = f"BMI为{round1(bmi)}，大于23，计3分。"
     else:
-        q6 = 0 if float(payload.calf_circumference) < 31 else 3
+        if float(payload.calf_circumference) < 31:
+            q6 = 0
+            q6_reason = f"小腿围为{round4(payload.calf_circumference)}cm，低于31cm，计0分。"
+        else:
+            q6 = 3
+            q6_reason = f"小腿围为{round4(payload.calf_circumference)}cm，≥31cm，计3分。"
 
     total = q1 + q2 + q3 + q4 + q5 + q6
     if total >= 12:
@@ -192,7 +288,15 @@ def assess_mna_sf(payload: MNASFRequest) -> Dict[str, object]:
             "q5_mental": q5,
             "q6_bmi_or_calf": q6,
         },
-        "bmi": round4(bmi),
+        "score_evidence": [
+            {"label": "摄食量", "score": q1, "triggered": q1 < 2, "reason": q1_reason},
+            {"label": "近3个月体重下降", "score": q2, "triggered": q2 < 3, "reason": q2_reason},
+            {"label": "活动能力", "score": q3, "triggered": q3 < 2, "reason": q3_reason},
+            {"label": "心理创伤或急性疾病", "score": q4, "triggered": q4 == 0, "reason": q4_reason},
+            {"label": "精神心理状况", "score": q5, "triggered": q5 < 2, "reason": q5_reason},
+            {"label": "BMI/小腿围", "score": q6, "triggered": q6 < 3, "reason": q6_reason},
+        ],
+        "bmi": round1(bmi),
         "weight_loss_3m_kg": round4(loss_kg),
         "level": level,
         "message": f"MNA-SF总分为{total}/14分，评估等级为：{level}。建议结合病史和饮食记录进行持续营养管理。",
@@ -213,11 +317,11 @@ def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
         raise_zh_422("肌肉减少程度必须为 none、mild_moderate 或 severe。")
 
     bmi = calc_bmi(payload.weight_records["0"], payload.height)
-    loss_6m = calc_loss_pct(payload.weight_records, "6")
-    loss_over6m = calc_loss_pct(payload.weight_records, "12")
+    loss_6m = optional_loss_pct(payload.weight_records, "6")
+    loss_over6m = optional_loss_pct(payload.weight_records, "12")
 
     phenotypic = []
-    if loss_6m > 5 or loss_over6m > 10:
+    if (loss_6m is not None and loss_6m > 5) or (loss_over6m is not None and loss_over6m > 10):
         phenotypic.append("非自主体重丢失")
     if (payload.age < 70 and bmi < 18.5) or (payload.age >= 70 and bmi < 20):
         phenotypic.append("低BMI")
@@ -290,15 +394,15 @@ def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
     severity = None
     if is_malnourished:
         severe = (
-            loss_6m > 10
-            or loss_over6m > 20
+            (loss_6m is not None and loss_6m > 10)
+            or (loss_over6m is not None and loss_over6m > 20)
             or (payload.age < 70 and bmi < 18.5)
             or (payload.age >= 70 and bmi < 20)
             or payload.muscle_loss == "severe"
         )
         moderate = (
-            5 <= loss_6m <= 10
-            or 10 <= loss_over6m <= 20
+            (loss_6m is not None and 5 <= loss_6m <= 10)
+            or (loss_over6m is not None and 10 <= loss_over6m <= 20)
             or (payload.age < 70 and 18.5 <= bmi < 20)
             or (payload.age >= 70 and 20 <= bmi < 22)
             or payload.muscle_loss == "mild_moderate"
@@ -320,9 +424,9 @@ def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
         "etiological_met": etiological_met,
         "phenotypic_criteria_triggered": phenotypic,
         "etiological_criteria_triggered": etiological,
-        "bmi": round4(bmi),
-        "weight_loss_6m_pct": round4(loss_6m),
-        "weight_loss_over6m_pct": round4(loss_over6m),
+        "bmi": round1(bmi),
+        "weight_loss_6m_pct": round1(loss_6m) if loss_6m is not None else None,
+        "weight_loss_over6m_pct": round1(loss_over6m) if loss_over6m is not None else None,
         "severity": severity,
         "message": message,
     }

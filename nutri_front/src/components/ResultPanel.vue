@@ -10,6 +10,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  panelTitle: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['reset', 'enable-assessment', 'go-assessment'])
@@ -41,6 +45,7 @@ watch(
 
 <template>
   <section class="result-panel" :class="{ warning: isMalnourished, normal: !isMalnourished }">
+    <h3 v-if="panelTitle" class="final-result-title">{{ panelTitle }}</h3>
     <div class="result-summary">
       <div class="result-badge" aria-hidden="true">{{ resultIcon }}</div>
       <div>
