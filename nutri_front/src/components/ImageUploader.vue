@@ -39,7 +39,6 @@ function restoreDraftPreview() {
     clearPreview()
     previewUrl.value = `${API_BASE}/draft/image/${props.viewKey}?t=${Date.now()}`
     previewIsObjectUrl.value = false
-    emit('change', props.viewKey, null)
   }
 }
 

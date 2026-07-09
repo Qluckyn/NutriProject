@@ -647,18 +647,22 @@ button {
   color: #507086;
 }
 
-.intake-grid {
+.intake-single {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(260px, 420px);
   gap: 14px;
   margin-top: 14px;
 }
 
-.intake-week.highlight {
-  padding: 12px;
+.intake-week {
+  padding: 14px;
   border: 1px solid #9ed7c7;
   border-radius: 8px;
   background: #f1fbf8;
+}
+
+.intake-week small {
+  color: #507086;
 }
 
 .scale-tabs-card {
@@ -886,7 +890,6 @@ button {
 @media (max-width: 980px) {
   .form-grid.five-cols,
   .form-grid.two-cols,
-  .intake-grid,
   .result-metrics.three,
   .result-metrics.four,
   .criteria-columns {
@@ -902,10 +905,13 @@ button {
 
   .form-grid.five-cols,
   .form-grid.two-cols,
-  .intake-grid,
   .result-metrics.three,
   .result-metrics.four,
   .criteria-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .intake-single {
     grid-template-columns: 1fr;
   }
 

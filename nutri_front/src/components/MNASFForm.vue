@@ -164,7 +164,7 @@ watch(result, (value) => {
       <div class="result-metrics three">
         <div v-for="(score, key) in result.score_breakdown" :key="key"><span>{{ mnaMetricLabel(key) }}</span><strong>{{ score }}分</strong><p v-if="mnaMetricReason(result, key)" class="metric-reason">{{ mnaMetricReason(result, key) }}</p></div>
       </div>
-      <p class="message-text">{{ result.message }}</p><button class="secondary-button" type="button" @click="resetResult">重新评估</button>
+      <p class="message-text">{{ result.message }}</p>
     </section>
   </section>
 </template>

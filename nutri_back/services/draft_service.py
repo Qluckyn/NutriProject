@@ -20,6 +20,7 @@ def default_draft_data() -> Dict[str, object]:
         "glim_form": {},
         "images": {"front": None, "left": None, "right": None},
         "image_result": None,
+        "explain_result": None,
         "nrs2002_result": None,
         "mnasf_result": None,
         "glim_result": None,

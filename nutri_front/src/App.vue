@@ -6,6 +6,7 @@ import WeightRecordTable from './components/WeightRecordTable.vue'
 import IntakeRecord from './components/IntakeRecord.vue'
 import ImageUploader from './components/ImageUploader.vue'
 import ResultPanel from './components/ResultPanel.vue'
+import ExplainabilityPanel from './components/ExplainabilityPanel.vue'
 import NRS2002Form from './components/NRS2002Form.vue'
 import MNASFForm from './components/MNASFForm.vue'
 import GLIMForm from './components/GLIMForm.vue'
@@ -21,6 +22,7 @@ const emptyDraft = () => ({
   glim_form: {},
   images: { front: null, left: null, right: null },
   image_result: null,
+  explain_result: null,
   nrs2002_result: null,
   mnasf_result: null,
   glim_result: null,
@@ -54,6 +56,8 @@ const diseaseError = ref('')
 const imageError = ref('')
 const validationMessage = ref('')
 const imageLoading = ref(false)
+const explainLoading = ref(false)
+const explainError = ref('')
 const pendingImageUploads = ref(0)
 const nrsFormRef = ref(null)
 const mnaFormRef = ref(null)
@@ -68,6 +72,9 @@ const imageFiles = reactive({ front: null, left: null, right: null })
 const nrs2002Result = ref(null)
 const mnaSFResult = ref(null)
 const imageResult = ref(null)
+const explainResult = ref(null)
+const showExplainResult = ref(false)
+const explainExpandToken = ref(0)
 const glimResult = ref(null)
 // 综合结果页的勾选状态只用于当前前端会话，不写入草稿。
 const finalResultSelection = reactive({ nrs2002: false, mnaSF: false, image: false, glim: false })
@@ -105,6 +112,8 @@ function syncStateFromDraft() {
   nrs2002Result.value = draftData.nrs2002_result || null
   mnaSFResult.value = draftData.mnasf_result || null
   imageResult.value = draftData.image_result || null
+  explainResult.value = draftData.explain_result || null
+  showExplainResult.value = Boolean(explainResult.value)
   glimResult.value = draftData.glim_result || null
   skippedMnaSF.value = Boolean(draftData.skipped_mnasf)
   currentStep.value = Number(draftData.current_step || inferStepFromDraft())
@@ -118,21 +127,36 @@ function inferStepFromDraft() {
   return 1
 }
 
+async function writeDraftNow() {
+  await fetch(`${API_BASE}/draft`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(draftData),
+  })
+}
+
 // 防抖保存完整草稿，步骤状态和表单数据统一交给后端草稿接口持久化。
 function saveDraft() {
   if (!draftLoaded.value) return
   window.clearTimeout(draftTimer)
   draftTimer = window.setTimeout(async () => {
     try {
-      await fetch(`${API_BASE}/draft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draftData),
-      })
+      await writeDraftNow()
     } catch (error) {
       console.warn('保存草稿失败', error)
     }
   }, 500)
+}
+
+async function saveDraftNow() {
+  if (!draftLoaded.value) return
+  window.clearTimeout(draftTimer)
+  draftTimer = null
+  try {
+    await writeDraftNow()
+  } catch (error) {
+    console.warn('保存草稿失败', error)
+  }
 }
 
 function beginDraftImageUpload() {
@@ -276,6 +300,13 @@ function skipMna() {
 function onFileChange(viewKey, file) {
   imageFiles[viewKey] = file
   imageError.value = ''
+  explainError.value = ''
+  imageResult.value = null
+  explainResult.value = null
+  draftData.image_result = null
+  draftData.explain_result = null
+  showExplainResult.value = false
+  saveDraft()
 }
 
 function onUploadError(message) {
@@ -289,35 +320,71 @@ async function appendDraftImage(formData, view) {
   formData.append(view, new File([blob], `${view}.jpg`, { type: 'image/jpeg' }))
 }
 
+async function buildImageFormData() {
+  const formData = new FormData()
+  for (const view of ['front', 'left', 'right']) {
+    if (imageFiles[view]) {
+      formData.append(view, imageFiles[view])
+    } else if (draftData.images?.[view]?.saved) {
+      await appendDraftImage(formData, view)
+    }
+  }
+  return formData
+}
+
 // 使用 /predict 接口提交图片；草稿恢复场景下先把已保存图片取回再组装为上传表单。
 async function submitPrediction() {
   if (!canSubmitImage.value) return
   imageLoading.value = true
+  explainLoading.value = false
   imageError.value = ''
+  explainError.value = ''
   imageResult.value = null
+  explainResult.value = null
   draftData.image_result = null
-  saveDraft()
+  draftData.explain_result = null
+  showExplainResult.value = false
+  await saveDraftNow()
 
   try {
-    const formData = new FormData()
-    for (const view of ['front', 'left', 'right']) {
-      if (imageFiles[view]) {
-        formData.append(view, imageFiles[view])
-      } else if (draftData.images?.[view]?.saved) {
-        await appendDraftImage(formData, view)
-      }
-    }
-
+    const formData = await buildImageFormData()
     const response = await fetch(`${API_BASE}/predict`, { method: 'POST', body: formData })
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(data.detail || '筛查请求失败，请稍后重试。')
     imageResult.value = data
     draftData.image_result = data
-    saveDraft()
+    await saveDraftNow()
+
   } catch (error) {
     imageError.value = error.message || '网络错误或服务不可用，请确认后端服务已启动。'
   } finally {
     imageLoading.value = false
+  }
+}
+
+async function runExplainAnalysis() {
+  if (!imageResult.value || explainLoading.value) return
+  if (explainResult.value) {
+    showExplainResult.value = true
+    explainExpandToken.value += 1
+    return
+  }
+
+  showExplainResult.value = true
+  explainLoading.value = true
+  explainError.value = ''
+  try {
+    const explainResponse = await fetch(API_BASE + '/explain/roi/draft', { method: 'POST' })
+    const explainData = await explainResponse.json().catch(() => ({}))
+    if (!explainResponse.ok) throw new Error(explainData.detail || '可解释性结果生成失败。')
+    explainResult.value = explainData
+    draftData.explain_result = explainData
+    explainExpandToken.value += 1
+    await saveDraftNow()
+  } catch (error) {
+    explainError.value = error.message || '可解释性结果暂不可用。'
+  } finally {
+    explainLoading.value = false
   }
 }
 
@@ -339,9 +406,13 @@ async function resetAll() {
   Object.assign(imageFiles, { front: null, left: null, right: null })
   showErrors.value = false
   imageError.value = ''
+  explainError.value = ''
   validationMessage.value = ''
   clearToken.value += 1
   resetToken.value += 1
+  explainResult.value = null
+  explainLoading.value = false
+  showExplainResult.value = false
   resetFinalResultSelection()
   currentStep.value = 1
 }
@@ -493,7 +564,7 @@ function glimDiagnosisReasons(value) {
 
 function formatIntakeFraction(value) {
   if (value === "" || value === null || value === undefined) return "-"
-  const labels = { 0: "完全不进食", 25: "占正常进食的1/4", 50: "占正常进食的1/2", 75: "占正常进食的3/4", 100: "正常进食" }
+  const labels = { 0: "占正常进食0 ~ 1/4", 25: "占正常进食0 ~ 1/4", 50: "占正常进食的1/4 ~ 1/2", 75: "占正常进食的1/2 ~ 3/4", 100: "占正常进食的3/4以上" }
   const numeric = Number(value)
   return labels[numeric] || String(numeric / 100)
 }
@@ -538,14 +609,6 @@ function formatIntakeFraction(value) {
     </section>
 
     <section v-if="currentStep === 2" class="step-panel">
-      <section class="form-card readonly-summary-card">
-        <div class="section-title-row"><div><p class="section-kicker">Summary</p><h2>步骤1数据摘要</h2></div></div>
-        <div class="result-metrics three">
-          <div><span>体重数据</span><strong>已从步骤1读取</strong></div>
-          <div><span>摄食量</span><strong>最近一周 {{ formatIntakeFraction(intakeLastWeek) }}</strong></div>
-          <div><span>3个月体重</span><strong>{{ weightRecords['3'] || '可在下方补填' }}{{ weightRecords['3'] ? 'kg' : '' }}</strong></div>
-        </div>
-      </section>
       <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="step2VisibleMonths" :required-months="step2RequiredMonths" :readonly-months="[0]" @update:model-value="updateWeights" />
       <MNASFForm ref="mnaFormRef" :patient="patientInfo" :weights="weightRecords" :intake-last-week="intakeLastWeek" :show-submit="false" @validation-failed="markValidationFailed" @highlight-calf="showErrors = true" @assessed="setMnaResult" />
       <p v-if="validationMessage && currentStep === 2" class="field-error">{{ validationMessage }}</p>
@@ -566,9 +629,15 @@ function formatIntakeFraction(value) {
         <p v-if="imageError" class="error-alert">{{ imageError }}</p>
       </section>
       <ResultPanel v-if="imageResult" :result="imageResult" :show-actions="false" />
+      <ExplainabilityPanel v-if="showExplainResult" :result="explainResult" :loading="explainLoading" :error="explainError" :expand-token="explainExpandToken" />
       <div class="step-actions split-actions">
         <button class="secondary-button" type="button" @click="goPrevious">上一步</button>
         <span class="action-spacer"></span>
+        <button v-if="imageResult && !showExplainResult" class="secondary-button" type="button" :disabled="explainLoading" @click="runExplainAnalysis">
+          <span v-if="explainLoading" class="spinner" aria-hidden="true"></span>
+          <span v-if="explainLoading">可解释性分析中...</span>
+          <span v-else>可解释性分析</span>
+        </button>
         <button class="primary-button" type="button" :disabled="!canSubmitImage" @click="submitPrediction">
           <span v-if="imageLoading" class="spinner" aria-hidden="true"></span>
           {{ imageLoading ? '分析中...' : pendingImageUploads > 0 ? '图片保存中...' : '开始筛查' }}
@@ -578,14 +647,6 @@ function formatIntakeFraction(value) {
     </section>
 
     <section v-if="currentStep === 4" class="step-panel">
-      <section class="form-card readonly-summary-card">
-        <div class="section-title-row"><div><p class="section-kicker">Summary</p><h2>步骤1数据摘要</h2></div></div>
-        <div class="result-metrics three">
-          <div><span>当前体重</span><strong>已从步骤1读取</strong></div>
-          <div><span>0个月</span><strong>{{ weightRecords['0'] || '-' }}kg</strong></div>
-          <div><span>6个月以内/6个月以上</span><strong>{{ weightRecords['6'] || '选填' }}{{ weightRecords['6'] ? 'kg' : '' }} / {{ weightRecords['12'] || '选填' }}{{ weightRecords['12'] ? 'kg' : '' }}</strong></div>
-        </div>
-      </section>
       <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="step4VisibleMonths" :required-months="step4RequiredMonths" :readonly-months="[0]" :month-labels="step4MonthLabels" @update:model-value="updateWeights" />
       <GLIMForm ref="glimFormRef" :patient="patientInfo" :weights="weightRecords" :diseases="diseases" :glim-config="glimConfig" :show-submit="false" @validation-failed="markValidationFailed" @assessed="setGlimResult" />
       <p v-if="validationMessage && currentStep === 4" class="field-error">{{ validationMessage }}</p>
@@ -623,7 +684,10 @@ function formatIntakeFraction(value) {
           <p class="message-text">{{ mnaSFResult.message }}</p>
         </section>
 
-        <ResultPanel v-if="imageResult && finalResultSelection.image" :result="imageResult" :show-actions="false" panel-title="面部图像筛查" />
+        <div v-if="imageResult && finalResultSelection.image" class="image-result-stack">
+          <ResultPanel :result="imageResult" :show-actions="false" panel-title="面部图像筛查" />
+          <ExplainabilityPanel :result="explainResult" :loading="explainLoading" :error="explainError" />
+        </div>
 
         <section v-if="glimResult && finalResultSelection.glim" class="assessment-result" :class="glimResult.is_malnourished ? 'risk' : 'good'">
           <h3 class="final-result-title">GLIM 营养不良评定</h3>
@@ -740,9 +804,6 @@ function formatIntakeFraction(value) {
   flex: 1 1 auto;
 }
 
-.readonly-summary-card {
-  border-style: dashed;
-}
 
 .image-step-workspace {
   margin-top: 0;
@@ -798,8 +859,18 @@ function formatIntakeFraction(value) {
 
 /* 综合结果卡片统一作为网格项展示，避免 ResultPanel 的全局上边距造成错位。 */
 .final-results-grid > .assessment-result,
-.final-results-grid > .result-panel {
+.final-results-grid > .result-panel,
+.final-results-grid > .image-result-stack {
   height: 100%;
+  margin-top: 0;
+}
+
+.image-result-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.image-result-stack > .result-panel {
   margin-top: 0;
 }
 

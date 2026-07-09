@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
 import model_loader
-from routers import assess, diseases, draft, predict
+from routers import assess, diseases, draft, explain, predict
 from services import diseases_service, draft_service
 
 # FastAPI应用入口：只负责实例创建、中间件、异常处理、路由挂载和启动初始化。
@@ -41,6 +41,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(predict.router)
 app.include_router(assess.router)
 app.include_router(draft.router)
+app.include_router(explain.router)
 app.include_router(diseases.router)
 
 

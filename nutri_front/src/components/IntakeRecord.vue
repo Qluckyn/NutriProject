@@ -15,30 +15,28 @@ const props = defineProps({
 const emit = defineEmits(['update:weeks', 'update:lastWeek'])
 const draftContext = inject('draftContext', null)
 const isRestoring = ref(false)
+const emptyWeeks = { 1: '', 2: '', 3: '', 4: '' }
 const intakeOptions = [
-  { value: '0', label: '完全不进食' },
-  { value: '25', label: '占正常进食的1/4' },
-  { value: '50', label: '占正常进食的1/2' },
-  { value: '75', label: '占正常进食的3/4' },
-  { value: '100', label: '正常进食' },
+  { value: '25', label: '占正常进食0 ~ 1/4' },
+  { value: '50', label: '占正常进食的1/4 ~ 1/2' },
+  { value: '75', label: '占正常进食的1/2 ~ 3/4' },
+  { value: '100', label: '占正常进食的3/4以上' },
 ]
 
-// 第4周是最近一周，会同步给量表计算使用；前3周仅作为临床参考。
-function updateWeek(week, value) {
-  const next = { ...props.weeks, [week]: value }
+// NRS-2002 仅使用最近一周摄食量；前3周不再在前端采集。
+function updateLastWeek(value) {
+  const next = { ...emptyWeeks, 4: value }
   emit('update:weeks', next)
-  if (week === '4') {
-    emit('update:lastWeek', value)
-  }
+  emit('update:lastWeek', value)
 }
 
 function restoreFromDraft() {
   const saved = draftContext?.draftData.intake_records
   if (!saved || !Object.keys(saved).length) return
   isRestoring.value = true
-  const next = { ...props.weeks, ...saved }
+  const next = { ...emptyWeeks, 4: saved['4'] || '' }
   emit('update:weeks', next)
-  emit('update:lastWeek', next['4'] || '')
+  emit('update:lastWeek', next['4'])
   requestAnimationFrame(() => {
     isRestoring.value = false
   })
@@ -67,22 +65,23 @@ watch(
 </script>
 
 <template>
-  <section class="form-card">
-    <div class="section-title-row">
+  <section class='form-card'>
+    <div class='section-title-row'>
       <div>
-        <p class="section-kicker">Intake</p>
+        <p class='section-kicker'>Intake</p>
         <h2>摄食量记录</h2>
       </div>
     </div>
-    <p class="help-text">请选择每周摄食量相当于正常需求的比例，0表示完全不进食，1表示正常进食</p>
+    <p class='help-text'>请选择最近一周摄食量相当于正常需求的区间。</p>
 
-    <div class="intake-grid">
-      <label v-for="week in ['1', '2', '3', '4']" :key="week" class="field-block intake-week" :class="{ highlight: week === '4', invalid: showErrors && week === '4' && !weeks[week] }">
-        <span>第{{ week }}周{{ week === '4' ? '（最近一周）' : '' }} <strong v-if="week === '4'">*</strong></span>
-        <select :value="weeks[week]" @change="updateWeek(week, $event.target.value)">
-          <option value="">请选择</option>
-          <option v-for="option in intakeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+    <div class='intake-single'>
+      <label class='field-block intake-week' :class="{ invalid: showErrors && !weeks['4'] }">
+        <span>最近一周摄食量 <strong>*</strong></span>
+        <select :value="weeks['4']" @change="updateLastWeek($event.target.value)">
+          <option value=''>请选择</option>
+          <option v-for='option in intakeOptions' :key='option.value' :value='option.value'>{{ option.label }}</option>
         </select>
+        <small>NRS-2002 评分仅使用最近一周摄食量。</small>
       </label>
     </div>
   </section>

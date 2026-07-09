@@ -63,15 +63,14 @@ def optional_loss_pct(records: Dict[str, float], month: str) -> Optional[float]:
 
 
 def intake_label(value: float) -> str:
-    labels = {
-        0: "完全不进食",
-        25: "占正常进食的1/4",
-        50: "占正常进食的1/2",
-        75: "占正常进食的3/4",
-        100: "正常进食",
-    }
-    numeric = round(float(value), 4)
-    return labels.get(int(numeric), f"占正常进食的{numeric}%")
+    numeric = float(value)
+    if numeric <= 25:
+        return "占正常进食0 ~ 1/4"
+    if numeric <= 50:
+        return "占正常进食的1/4 ~ 1/2"
+    if numeric <= 75:
+        return "占正常进食的1/2 ~ 3/4"
+    return "占正常进食的3/4以上"
 
 
 def nrs_nutrition_score(payload: NRS2002Request) -> Tuple[int, Dict[str, Optional[float]], float, List[Dict[str, object]]]:
@@ -119,13 +118,13 @@ def nrs_nutrition_score(payload: NRS2002Request) -> Tuple[int, Dict[str, Optiona
     intake = payload.intake_last_week
     if intake <= 25:
         intake_score = 3
-        intake_reason = f"最近一周摄食量为{intake_label(intake)}，小于等于正常需求的1/4，触发3分。"
+        intake_reason = f"最近一周摄食量为{intake_label(intake)}，触发3分。"
     elif intake <= 50:
         intake_score = 2
-        intake_reason = f"最近一周摄食量为{intake_label(intake)}，小于等于正常需求的1/2，触发2分。"
+        intake_reason = f"最近一周摄食量为{intake_label(intake)}，触发2分。"
     elif intake <= 75:
         intake_score = 1
-        intake_reason = f"最近一周摄食量为{intake_label(intake)}，小于等于正常需求的3/4，触发1分。"
+        intake_reason = f"最近一周摄食量为{intake_label(intake)}，触发1分。"
     else:
         intake_score = 0
         intake_reason = f"最近一周摄食量为{intake_label(intake)}，未触发摄食量评分。"

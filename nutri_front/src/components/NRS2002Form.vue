@@ -169,7 +169,7 @@ watch(result, (value) => {
         <div><span>年龄</span><strong>{{ result.age_score }}分</strong><p v-for="reason in nrsMetricReasons(result, 'age')" :key="reason" class="metric-reason">{{ reason }}</p></div>
       </div>
       <div class="result-metrics nrs-detail-metrics"><div><span>1个月内体重丢失</span><strong>{{ nrsLossText(result.weight_loss_details?.['1m_loss_pct']) }}</strong></div><div><span>2个月内体重丢失</span><strong>{{ nrsLossText(result.weight_loss_details?.['2m_loss_pct']) }}</strong></div><div><span>3个月内体重丢失</span><strong>{{ nrsLossText(result.weight_loss_details?.['3m_loss_pct']) }}</strong></div><div><span>BMI</span><strong>{{ nrsBmiText(result) }}</strong></div></div>
-      <p class="message-text">{{ result.recommendation }}</p><p class="message-text">{{ result.message }}</p><button class="secondary-button" type="button" @click="resetResult">重新评估</button>
+      <p class="message-text">{{ result.recommendation }}</p><p class="message-text">{{ result.message }}</p>
     </section>
   </section>
 </template>
