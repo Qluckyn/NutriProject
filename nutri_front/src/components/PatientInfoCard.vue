@@ -47,6 +47,18 @@ function isMissing(field) {
   return props.showErrors && (props.modelValue[field] === '' || props.modelValue[field] === null || props.modelValue[field] === undefined)
 }
 
+function isInvalidAge() {
+  if (!props.showErrors || isMissing('age')) return false
+  const age = Number(props.modelValue.age)
+  return !Number.isInteger(age) || age < 0 || age > 110
+}
+
+function isInvalidHeight() {
+  if (!props.showErrors || isMissing('height')) return false
+  const height = Number(props.modelValue.height)
+  return Number.isNaN(height) || height < 100 || height > 250
+}
+
 onMounted(() => {
   restoreFromDraft()
 })
@@ -100,9 +112,10 @@ watch(
         <input :value="modelValue.name" type="text" placeholder="选填" :disabled="readonly" @input="updateField('name', $event.target.value)" />
       </label>
 
-      <label class="field-block" :class="{ invalid: isMissing('age') }">
+      <label class="field-block" :class="{ invalid: isMissing('age') || isInvalidAge() }">
         <span>年龄 <strong>*</strong></span>
-        <input :value="modelValue.age" type="number" min="0" max="130" placeholder="岁" :disabled="readonly" @input="updateField('age', $event.target.value)" />
+        <input :value="modelValue.age" type="number" min="0" max="110" step="1" placeholder="岁" :disabled="readonly" @input="updateField('age', $event.target.value)" />
+        <small v-if="isInvalidAge()">年龄需填写0到110之间的整数</small>
       </label>
 
       <div class="field-block">
@@ -113,9 +126,10 @@ watch(
         </div>
       </div>
 
-      <label class="field-block" :class="{ invalid: isMissing('height') }">
+      <label class="field-block" :class="{ invalid: isMissing('height') || isInvalidHeight() }">
         <span>身高 <strong>*</strong></span>
-        <input :value="modelValue.height" type="number" min="0" step="0.1" placeholder="cm" :disabled="readonly" @input="updateField('height', $event.target.value)" />
+        <input :value="modelValue.height" type="number" min="100" max="250" step="0.1" placeholder="cm" :disabled="readonly" @input="updateField('height', $event.target.value)" />
+        <small v-if="isInvalidHeight()">身高需填写100到250cm之间的数值</small>
       </label>
 
       <label class="field-block">

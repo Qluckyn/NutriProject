@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 
 
 class NRS2002Request(BaseModel):
-    age: int = Field(..., ge=0, le=130)
-    height: float = Field(..., gt=0)
+    age: int = Field(..., ge=0, le=110)
+    height: float = Field(..., ge=100, le=250)
     weight_records: Dict[str, float] = Field(...)
     intake_last_week: float = Field(..., ge=0, le=100)
     disease_ids: List[str] = Field(default_factory=list)
@@ -15,8 +15,8 @@ class NRS2002Request(BaseModel):
 
 
 class MNASFRequest(BaseModel):
-    age: int = Field(..., ge=0, le=130)
-    height: float = Field(..., gt=0)
+    age: int = Field(..., ge=0, le=110)
+    height: float = Field(..., ge=100, le=250)
     weight_records: Dict[str, float] = Field(...)
     intake_last_week: float = Field(..., ge=0, le=100)
     mobility: int = Field(..., ge=0, le=2)
@@ -27,8 +27,8 @@ class MNASFRequest(BaseModel):
 
 
 class GLIMRequest(BaseModel):
-    age: int = Field(..., ge=0, le=130)
-    height: float = Field(..., gt=0)
+    age: int = Field(..., ge=0, le=110)
+    height: float = Field(..., ge=100, le=250)
     weight_records: Dict[str, float] = Field(...)
     muscle_loss: str = Field(...)
     # 兼容旧请求；严格判定优先使用下面与图片表单一致的细项字段。

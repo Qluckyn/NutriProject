@@ -79,7 +79,6 @@ const glimResult = ref(null)
 // 综合结果页的勾选状态只用于当前前端会话，不写入草稿。
 const finalResultSelection = reactive({ nrs2002: false, mnaSF: false, image: false, glim: false })
 
-const patientReady = computed(() => Boolean(patientInfo.age && patientInfo.height))
 const step1VisibleMonths = [0, 1, 2, 3]
 const step1RequiredMonths = [0]
 const step2VisibleMonths = [0, 3]
@@ -87,9 +86,10 @@ const step2RequiredMonths = [0]
 const step4VisibleMonths = [0, 6, 12]
 const step4RequiredMonths = [0]
 const step4MonthLabels = { 6: '6个月以内', 12: '6个月以上' }
-const step1Ready = computed(() => patientReady.value && step1RequiredMonths.every((month) => weightRecords[String(month)]) && intakeLastWeek.value !== '')
-const step2Ready = computed(() => patientReady.value && step2RequiredMonths.every((month) => weightRecords[String(month)]) && intakeLastWeek.value !== '')
-const step4Ready = computed(() => patientReady.value && step4RequiredMonths.every((month) => weightRecords[String(month)]))
+const validPatientInfo = computed(() => validatePatientInfo() === '')
+const step1Ready = computed(() => validPatientInfo.value && validateWeightRecords(step1RequiredMonths) === '' && intakeLastWeek.value !== '')
+const step2Ready = computed(() => validPatientInfo.value && validateWeightRecords(step2RequiredMonths) === '' && intakeLastWeek.value !== '')
+const step4Ready = computed(() => validPatientInfo.value && validateWeightRecords(step4RequiredMonths) === '')
 const hasDraftImage = computed(() => Object.values(draftData.images || {}).some((item) => item?.saved))
 const canSubmitImage = computed(() => hasDraftImage.value && pendingImageUploads.value === 0 && !imageLoading.value)
 const finalResultOptions = computed(() => [
@@ -242,6 +242,33 @@ function markValidationFailed(message = '仍有必填项未完成。') {
   validationMessage.value = message
 }
 
+function validatePatientInfo() {
+  if (!patientInfo.age || !patientInfo.height) return '请先补全患者年龄和身高。'
+
+  const age = Number(patientInfo.age)
+  if (!Number.isInteger(age) || age < 0 || age > 110) return '年龄需填写0到110之间的整数。'
+
+  const height = Number(patientInfo.height)
+  if (Number.isNaN(height) || height < 100 || height > 250) return '身高需填写100到250cm之间的数值。'
+
+  return ''
+}
+
+function validateWeightRecords(requiredMonths = []) {
+  const requiredKeys = requiredMonths.map((month) => String(month))
+  const missing = requiredKeys.filter((month) => !weightRecords[month])
+  if (missing.length) return '请先补全必填体重记录。'
+
+  const invalid = Object.entries(weightRecords).filter(([, value]) => {
+    if (value === '' || value === null || value === undefined) return false
+    const weight = Number(value)
+    return Number.isNaN(weight) || weight < 30 || weight > 100
+  })
+  if (invalid.length) return '体重需填写30到100kg之间的数值。'
+
+  return ''
+}
+
 function setNrsResult(value) {
   nrs2002Result.value = value
   draftData.nrs2002_result = value
@@ -264,6 +291,16 @@ function setGlimResult(value) {
 function submitNrs() {
   validationMessage.value = ''
   showErrors.value = true
+  const patientMessage = validatePatientInfo()
+  if (patientMessage) {
+    markValidationFailed(patientMessage)
+    return
+  }
+  const weightMessage = validateWeightRecords(step1RequiredMonths)
+  if (weightMessage) {
+    markValidationFailed(weightMessage)
+    return
+  }
   if (!step1Ready.value) {
     markValidationFailed('请先补全患者年龄、身高、当前体重和最近一周摄食量。')
     return
@@ -274,6 +311,16 @@ function submitNrs() {
 function submitMna() {
   validationMessage.value = ''
   showErrors.value = true
+  const patientMessage = validatePatientInfo()
+  if (patientMessage) {
+    markValidationFailed(patientMessage)
+    return
+  }
+  const weightMessage = validateWeightRecords(step2RequiredMonths)
+  if (weightMessage) {
+    markValidationFailed(weightMessage)
+    return
+  }
   if (!step2Ready.value) {
     markValidationFailed('请先补全患者年龄、身高、当前体重和最近一周摄食量。')
     return
@@ -284,6 +331,16 @@ function submitMna() {
 function submitGlim() {
   validationMessage.value = ''
   showErrors.value = true
+  const patientMessage = validatePatientInfo()
+  if (patientMessage) {
+    markValidationFailed(patientMessage)
+    return
+  }
+  const weightMessage = validateWeightRecords(step4RequiredMonths)
+  if (weightMessage) {
+    markValidationFailed(weightMessage)
+    return
+  }
   if (!step4Ready.value) {
     markValidationFailed('请先补全年龄、身高和当前体重。')
     return
@@ -313,26 +370,7 @@ function onUploadError(message) {
   imageError.value = message
 }
 
-async function appendDraftImage(formData, view) {
-  const response = await fetch(`${API_BASE}/draft/image/${view}`)
-  if (!response.ok) return
-  const blob = await response.blob()
-  formData.append(view, new File([blob], `${view}.jpg`, { type: 'image/jpeg' }))
-}
-
-async function buildImageFormData() {
-  const formData = new FormData()
-  for (const view of ['front', 'left', 'right']) {
-    if (imageFiles[view]) {
-      formData.append(view, imageFiles[view])
-    } else if (draftData.images?.[view]?.saved) {
-      await appendDraftImage(formData, view)
-    }
-  }
-  return formData
-}
-
-// 使用 /predict 接口提交图片；草稿恢复场景下先把已保存图片取回再组装为上传表单。
+// 图片已在选择时保存到后端草稿；筛查时直接让后端读取草稿图片，避免二次上传。
 async function submitPrediction() {
   if (!canSubmitImage.value) return
   imageLoading.value = true
@@ -347,8 +385,7 @@ async function submitPrediction() {
   await saveDraftNow()
 
   try {
-    const formData = await buildImageFormData()
-    const response = await fetch(`${API_BASE}/predict`, { method: 'POST', body: formData })
+    const response = await fetch(`${API_BASE}/predict/draft`, { method: 'POST' })
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(data.detail || '筛查请求失败，请稍后重试。')
     imageResult.value = data

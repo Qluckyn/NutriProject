@@ -15,6 +15,9 @@ from services.diseases_service import (
 
 # 三个临床营养评估量表的校验与计算逻辑集中在此模块。
 
+MIN_ADULT_WEIGHT_KG = 30
+MAX_ADULT_WEIGHT_KG = 100
+
 
 def raise_zh_422(message: str) -> None:
     raise HTTPException(status_code=422, detail=message)
@@ -29,9 +32,19 @@ def validate_weight_records(records: Dict[str, float], required_months: Tuple[st
     missing = [month for month in required_months if month not in records or records[month] is None]
     if missing:
         raise_zh_422("缺少必填体重记录：" + "、".join(f"距今{month}个月" for month in missing))
-    invalid = [month for month, value in records.items() if value is None or float(value) <= 0]
+    invalid = []
+    for month, value in records.items():
+        if value is None:
+            invalid.append(month)
+            continue
+        weight = float(value)
+        if weight < MIN_ADULT_WEIGHT_KG or weight > MAX_ADULT_WEIGHT_KG:
+            invalid.append(month)
     if invalid:
-        raise_zh_422("体重必须为大于0的数字：" + "、".join(f"距今{month}个月" for month in invalid))
+        raise_zh_422(
+            f"体重必须为{MIN_ADULT_WEIGHT_KG}到{MAX_ADULT_WEIGHT_KG}kg之间的数字："
+            + "、".join(f"距今{month}个月" for month in invalid)
+        )
 
 
 def validate_disease_ids(disease_ids: List[str]) -> None:
@@ -51,8 +64,8 @@ def calc_loss_pct(records: Dict[str, float], month: str) -> float:
     """按距今月份计算相对当前体重的下降百分比。"""
     previous = float(records[month])
     current = float(records["0"])
-    if previous <= 0:
-        raise_zh_422(f"距今{month}个月体重必须大于0。")
+    if previous < MIN_ADULT_WEIGHT_KG or previous > MAX_ADULT_WEIGHT_KG:
+        raise_zh_422(f"距今{month}个月体重必须为{MIN_ADULT_WEIGHT_KG}到{MAX_ADULT_WEIGHT_KG}kg之间的数字。")
     return (previous - current) / previous * 100
 
 

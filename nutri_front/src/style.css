@@ -610,7 +610,37 @@ button {
 .weight-table {
   width: 100%;
   min-width: 520px;
+  table-layout: fixed;
   border-collapse: collapse;
+}
+
+.weight-table th:nth-child(1),
+.weight-table td:nth-child(1) {
+  width: 28%;
+}
+
+.weight-table th:nth-child(2),
+.weight-table td:nth-child(2) {
+  width: 30%;
+}
+
+.weight-table th:nth-child(3),
+.weight-table td:nth-child(3) {
+  width: 42%;
+}
+
+.weight-table td:nth-child(3) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.weight-table td:nth-child(3) small {
+  flex-basis: 100%;
+  color: #a6451f;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .weight-table th,

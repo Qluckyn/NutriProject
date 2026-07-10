@@ -59,6 +59,12 @@ function missingRequired(month) {
   return props.showErrors && requiredMonthKeys.value.includes(month) && !props.modelValue[month]
 }
 
+function isInvalidWeight(month) {
+  if (!props.showErrors || !props.modelValue[month]) return false
+  const weight = Number(props.modelValue[month])
+  return Number.isNaN(weight) || weight < 30 || weight > 100
+}
+
 function isReadonly(month) {
   return readonlyMonthKeys.value.includes(month)
 }
@@ -109,13 +115,14 @@ watch(
           </tr>
         </thead>
         <tbody>
-          <tr v-for="month in visibleMonthKeys" :key="month" :class="{ invalid: missingRequired(month) }">
+          <tr v-for="month in visibleMonthKeys" :key="month" :class="{ invalid: missingRequired(month) || isInvalidWeight(month) }">
             <td>{{ monthLabel(month) }}</td>
             <td>
               <input
                 :value="modelValue[month]"
                 type="number"
-                min="0"
+                min="30"
+                max="100"
                 step="0.1"
                 placeholder="kg"
                 :disabled="isReadonly(month)"
@@ -127,6 +134,7 @@ watch(
                 <strong v-if="requiredMonthKeys.includes(month)">*</strong>
                 {{ requiredMonthKeys.includes(month) ? '必填' : '选填' }}
               </span>
+              <small v-if="isInvalidWeight(month)">体重需填写30到100kg之间的数值</small>
               <small v-if="isReadonly(month)">已锁定</small>
             </td>
           </tr>

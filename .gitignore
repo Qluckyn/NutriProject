@@ -17,3 +17,7 @@ node_modules/
 .DS_Store
 *.log
 cloudflared
+# 前端本地环境变量
+nutri_front/.env
+nutri_front/.env.local
+nutri_front/.env.*.local
