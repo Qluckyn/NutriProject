@@ -356,7 +356,7 @@
         },
         {
           "id": "il6",
-          "name": "IL-6C",
+          "name": "IL-6",
           "unit": "pg/mL",
           "threshold": 7
         }

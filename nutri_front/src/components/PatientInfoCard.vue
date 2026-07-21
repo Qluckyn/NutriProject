@@ -134,7 +134,7 @@ watch(
 
       <label class="field-block">
         <span>小腿围</span>
-        <input :value="modelValue.calfCircumference" type="number" min="0" step="0.1" placeholder="cm" :disabled="readonly" @input="updateField('calfCircumference', $event.target.value)" />
+        <input :value="modelValue.calfCircumference" type="number" min="0.1" step="0.1" placeholder="cm" :disabled="readonly" @input="updateField('calfCircumference', $event.target.value)" />
         <small>MNA-SF中可替代BMI使用</small>
       </label>
     </div>

@@ -35,6 +35,8 @@ button {
   padding: 48px 0 64px;
 }
 
+.history-button{position:absolute;top:24px;right:0;padding:9px 14px;border:1px solid #1689a7;border-radius:7px;background:#fff;color:#126981;font-weight:800}
+
 .page-header {
   margin-bottom: 28px;
 }
@@ -630,17 +632,21 @@ button {
 }
 
 .weight-table td:nth-child(3) {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  vertical-align: middle;
 }
 
 .weight-table td:nth-child(3) small {
-  flex-basis: 100%;
+  display: block;
+  margin-top: 6px;
   color: #a6451f;
   font-size: 12px;
   line-height: 1.4;
+}
+
+.weight-status-text {
+  color: #2c6d57;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .weight-table th,

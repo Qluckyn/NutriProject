@@ -22,8 +22,23 @@ const errorMessage = ref('')
 const result = ref(null)
 const touched = ref(false)
 
-const calfValue = computed(() => calfOverride.value || props.patient.calfCircumference)
-const formReady = computed(() => Boolean(props.patient.age && props.patient.height && props.weights['0'] && props.intakeLastWeek !== '' && (useBmi.value === 'true' || calfValue.value)))
+const calfValue = computed(() => calfOverride.value !== '' ? calfOverride.value : props.patient.calfCircumference)
+const isFiniteInRange = (value, min, max) => {
+  const numeric = Number(value)
+  return value !== '' && value !== null && value !== undefined && Number.isFinite(numeric) && numeric >= min && numeric <= max
+}
+const isValidCalf = computed(() => {
+  const numeric = Number(calfValue.value)
+  return calfValue.value !== '' && calfValue.value !== null && calfValue.value !== undefined && Number.isFinite(numeric) && numeric > 0
+})
+const formReady = computed(() => (
+  isFiniteInRange(props.patient.age, 0, 110)
+  && Number.isInteger(Number(props.patient.age))
+  && isFiniteInRange(props.patient.height, 100, 250)
+  && isFiniteInRange(props.weights['0'], 30, 200)
+  && isFiniteInRange(props.intakeLastWeek, 0, 100)
+  && (useBmi.value === 'true' || isValidCalf.value)
+))
 
 function restoreFromDraft() {
   if (!draftContext) return
@@ -59,6 +74,8 @@ watch(useBmi, (value) => {
 function buildPayload() {
   const records = Object.fromEntries(Object.entries(props.weights).filter(([, value]) => value !== '').map(([key, value]) => [key, Number(value)]))
   return {
+    patient_name: props.patient.name || '',
+    gender: props.patient.gender || '',
     age: Number(props.patient.age),
     height: Number(props.patient.height),
     weight_records: records,
@@ -67,7 +84,7 @@ function buildPayload() {
     stress_or_acute_disease: stressOrAcuteDisease.value === 'true',
     mental_status: Number(mentalStatus.value),
     use_bmi: useBmi.value === 'true',
-    calf_circumference: calfValue.value ? Number(calfValue.value) : null,
+    calf_circumference: calfValue.value === '' || calfValue.value === null || calfValue.value === undefined ? null : Number(calfValue.value),
   }
 }
 
@@ -75,7 +92,7 @@ async function submit() {
   touched.value = true
   if (!formReady.value) {
     emit('validation-failed')
-    errorMessage.value = '请先补全患者年龄、身高、当前体重、最近一周摄食量；使用小腿围时需填写小腿围。'
+    errorMessage.value = '请填写有效的年龄、身高、当前体重和最近一周摄食量；使用小腿围时需填写大于0的数值。'
     return
   }
   loading.value = true
@@ -153,7 +170,7 @@ watch(result, (value) => {
       <div class="field-block"><span>活动能力</span><div class="radio-stack"><label><input v-model="mobility" type="radio" value="0" />需长期卧床或坐轮椅</label><label><input v-model="mobility" type="radio" value="1" />可下床但不能外出</label><label><input v-model="mobility" type="radio" value="2" />可以外出</label></div></div>
       <div class="field-block"><span>近3个月是否有心理创伤或急性疾病</span><div class="segmented-options"><label><input v-model="stressOrAcuteDisease" type="radio" value="true" />是</label><label><input v-model="stressOrAcuteDisease" type="radio" value="false" />否</label></div></div>
       <div class="field-block"><span>精神心理状况</span><div class="radio-stack"><label><input v-model="mentalStatus" type="radio" value="0" />严重痴呆或抑郁</label><label><input v-model="mentalStatus" type="radio" value="1" />轻度痴呆</label><label><input v-model="mentalStatus" type="radio" value="2" />无问题</label></div></div>
-      <div class="field-block" :class="{ callout: useBmi === 'false' }"><span>第6题选择方式</span><div class="segmented-options"><label><input v-model="useBmi" type="radio" value="true" />使用BMI</label><label><input v-model="useBmi" type="radio" value="false" />使用小腿围</label></div><input v-if="useBmi === 'false'" v-model="calfOverride" type="number" min="0" step="0.1" placeholder="可覆盖患者基本信息中的小腿围" /></div>
+      <div class="field-block" :class="{ callout: useBmi === 'false' }"><span>第6题选择方式</span><div class="segmented-options"><label><input v-model="useBmi" type="radio" value="true" />使用BMI</label><label><input v-model="useBmi" type="radio" value="false" />使用小腿围</label></div><input v-if="useBmi === 'false'" v-model="calfOverride" type="number" min="0.1" step="0.1" placeholder="可覆盖患者基本信息中的小腿围" /></div>
       <p v-if="errorMessage" class="error-alert compact-alert">{{ errorMessage }}</p>
       <button v-if="showSubmit" class="primary-button" type="button" :disabled="loading || !formReady" @click="submit"><span v-if="loading" class="spinner" aria-hidden="true"></span>{{ loading ? '评估中...' : '开始评估 - MNA-SF' }}</button>
       <p v-if="touched && !formReady" class="field-error">仍有必填项未完成。</p>

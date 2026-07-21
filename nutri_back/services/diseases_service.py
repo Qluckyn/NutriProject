@@ -41,7 +41,7 @@ def normalize_diseases_config(data: Dict[str, Any]) -> Dict[str, Any]:
                 ] + [{"id": "other", "name": "其他"}],
                 "inflammatory_markers": [
                     {"id": "crp", "name": "CRP", "unit": "mg/L", "threshold": 5},
-                    {"id": "il6", "name": "IL-6C", "unit": "pg/mL", "threshold": 7},
+                    {"id": "il6", "name": "IL-6", "unit": "pg/mL", "threshold": 7},
                 ],
             },
         },

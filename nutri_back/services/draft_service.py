@@ -18,6 +18,7 @@ def default_draft_data() -> Dict[str, object]:
         "nrs2002_form": {},
         "mnasf_form": {},
         "glim_form": {},
+        "image_screening_form": {"giSymptoms": "none", "stressResponse": "no_fever", "ankleEdema": "none"},
         "images": {"front": None, "left": None, "right": None},
         "image_result": None,
         "explain_result": None,

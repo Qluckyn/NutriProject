@@ -26,6 +26,10 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+  statusText: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -62,7 +66,7 @@ function missingRequired(month) {
 function isInvalidWeight(month) {
   if (!props.showErrors || !props.modelValue[month]) return false
   const weight = Number(props.modelValue[month])
-  return Number.isNaN(weight) || weight < 30 || weight > 100
+  return Number.isNaN(weight) || weight < 30 || weight > 200
 }
 
 function isReadonly(month) {
@@ -122,7 +126,7 @@ watch(
                 :value="modelValue[month]"
                 type="number"
                 min="30"
-                max="100"
+                max="200"
                 step="0.1"
                 placeholder="kg"
                 :disabled="isReadonly(month)"
@@ -134,7 +138,8 @@ watch(
                 <strong v-if="requiredMonthKeys.includes(month)">*</strong>
                 {{ requiredMonthKeys.includes(month) ? '必填' : '选填' }}
               </span>
-              <small v-if="isInvalidWeight(month)">体重需填写30到100kg之间的数值</small>
+              <span v-if="statusText && month === '6'" class="weight-status-text">{{ statusText }}</span>
+              <small v-if="isInvalidWeight(month)">体重需填写30到200kg之间的数值</small>
               <small v-if="isReadonly(month)">已锁定</small>
             </td>
           </tr>

@@ -21,3 +21,6 @@ cloudflared
 nutri_front/.env
 nutri_front/.env.local
 nutri_front/.env.*.local
+nutri_back/.env
+nutri_back/.env.local
+nutri_back/.env.*.local

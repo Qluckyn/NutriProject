@@ -33,6 +33,10 @@ function toPercent(value) {
   return `${Math.round(Number(value || 0) * 10000) / 100}%`
 }
 
+function sgaScore(value) {
+  return Number(value).toFixed(2)
+}
+
 // 面部筛查提示营养不良风险时，通知父组件解锁量表评估Tab。
 watch(
   isMalnourished,
@@ -50,7 +54,7 @@ watch(
       <div class="result-badge" aria-hidden="true">{{ resultIcon }}</div>
       <div>
         <p class="result-label">筛查结果</p>
-        <h2>{{ resultTitle }}</h2>
+        <h2>{{ resultTitle }}<small v-if="result.sga_normalized_score !== undefined">（归一化分值：{{ sgaScore(result.sga_normalized_score) }} / 7）</small></h2>
       </div>
     </div>
 

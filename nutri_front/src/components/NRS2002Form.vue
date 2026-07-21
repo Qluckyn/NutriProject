@@ -28,7 +28,17 @@ const groupedDiseases = computed(() => {
 })
 
 const requiredMonths = ['0']
-const formReady = computed(() => Boolean(props.patient.age && props.patient.height && props.intakeLastWeek !== '' && requiredMonths.every((m) => props.weights[m])))
+const isFiniteInRange = (value, min, max) => {
+  const numeric = Number(value)
+  return value !== '' && value !== null && value !== undefined && Number.isFinite(numeric) && numeric >= min && numeric <= max
+}
+const formReady = computed(() => (
+  isFiniteInRange(props.patient.age, 0, 110)
+  && Number.isInteger(Number(props.patient.age))
+  && isFiniteInRange(props.patient.height, 100, 250)
+  && isFiniteInRange(props.intakeLastWeek, 0, 100)
+  && requiredMonths.every((month) => isFiniteInRange(props.weights[month], 30, 200))
+))
 
 function restoreFromDraft() {
   if (!draftContext) return
@@ -53,6 +63,8 @@ function persistForm() {
 
 function buildPayload() {
   return {
+    patient_name: props.patient.name || '',
+    gender: props.patient.gender || '',
     age: Number(props.patient.age),
     height: Number(props.patient.height),
     weight_records: Object.fromEntries(Object.entries(props.weights).filter(([, value]) => value !== '').map(([key, value]) => [key, Number(value)])),

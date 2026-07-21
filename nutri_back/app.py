@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
 import model_loader
-from routers import assess, diseases, draft, explain, predict
-from services import diseases_service, draft_service
+from routers import analysis, assess, diseases, draft, explain, history, predict, reports
+from services import diseases_service, draft_service, history_service
 
 # FastAPI应用入口：只负责实例创建、中间件、异常处理、路由挂载和启动初始化。
 app = FastAPI(
@@ -22,6 +22,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # 允许前端读取下载响应的 Content-Disposition，保留后端生成的真实文件名。
+    expose_headers=["Content-Disposition"],
 )
 
 
@@ -40,6 +42,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 app.include_router(predict.router)
 app.include_router(assess.router)
+app.include_router(analysis.router)
+app.include_router(reports.router)
+app.include_router(history.router)
 app.include_router(draft.router)
 app.include_router(explain.router)
 app.include_router(diseases.router)
@@ -50,3 +55,4 @@ def startup() -> None:
     model_loader.load_model()
     diseases_service.load_diseases_config()
     draft_service.init_draft_storage()
+    history_service.init_history_storage()

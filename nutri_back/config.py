@@ -1,4 +1,24 @@
+import os
 from pathlib import Path
+
+def load_backend_env() -> None:
+    """加载后端目录的本地 .env；系统环境变量优先，避免覆盖部署配置。"""
+    env_path = Path(__file__).resolve().parent / ".env"
+    if not env_path.exists():
+        return
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("\"").strip("\'")
+        if key:
+            os.environ.setdefault(key, value)
+
+
+load_backend_env()
+
 
 import torch
 from PIL import Image
@@ -46,6 +66,12 @@ transform = transforms.Compose(
 
 DRAFT_FILE = "./draft_data.json"
 DRAFT_IMAGE_DIR = "./draft_images"
+# Qwen 配置只从服务端环境变量读取，避免 API Key 暴露给浏览器或写入仓库。
+QWEN_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
+QWEN_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").rstrip("/")
+QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen-plus")
+QWEN_TIMEOUT_SECONDS = float(os.getenv("QWEN_TIMEOUT_SECONDS", "45"))
+
 DRAFT_VIEWS = {"front", "left", "right"}
 
 DISEASES_PATH = "./diseases.json"

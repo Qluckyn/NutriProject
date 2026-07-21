@@ -16,7 +16,7 @@ from services.diseases_service import (
 # 三个临床营养评估量表的校验与计算逻辑集中在此模块。
 
 MIN_ADULT_WEIGHT_KG = 30
-MAX_ADULT_WEIGHT_KG = 100
+MAX_ADULT_WEIGHT_KG = 200
 
 
 def raise_zh_422(message: str) -> None:
@@ -392,10 +392,10 @@ def assess_glim(payload: GLIMRequest) -> Dict[str, object]:
             inflammation_reasons.append("急性疾病或损伤：" + acute_labels[disease_id])
         elif disease_id in GLIM_CHRONIC_DISEASE_IDS and disease_id in disease_map:
             inflammation_reasons.append("慢性或反复发作疾病：" + disease_map[disease_id]["name"])
-    if payload.crp != -1 and payload.crp >= 5:
+    if payload.crp is not None and payload.crp >= 5:
         inflammation_reasons.append("炎症状态指标：CRP升高")
-    if payload.il6 != -1 and payload.il6 >= 7:
-        inflammation_reasons.append("炎症状态指标：IL-6C升高")
+    if payload.il6 is not None and payload.il6 >= 7:
+        inflammation_reasons.append("炎症状态指标：IL-6升高")
     if inflammation_reasons:
         etiological.append("炎症或疾病负担：" + "、".join(dict.fromkeys(inflammation_reasons)))
 

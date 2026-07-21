@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 
 
 class NRS2002Request(BaseModel):
+    patient_name: str = Field("")
+    gender: str = Field("")
     age: int = Field(..., ge=0, le=110)
     height: float = Field(..., ge=100, le=250)
     weight_records: Dict[str, float] = Field(...)
@@ -15,6 +17,8 @@ class NRS2002Request(BaseModel):
 
 
 class MNASFRequest(BaseModel):
+    patient_name: str = Field("")
+    gender: str = Field("")
     age: int = Field(..., ge=0, le=110)
     height: float = Field(..., ge=100, le=250)
     weight_records: Dict[str, float] = Field(...)
@@ -27,6 +31,8 @@ class MNASFRequest(BaseModel):
 
 
 class GLIMRequest(BaseModel):
+    patient_name: str = Field("")
+    gender: str = Field("")
     age: int = Field(..., ge=0, le=110)
     height: float = Field(..., ge=100, le=250)
     weight_records: Dict[str, float] = Field(...)
@@ -43,5 +49,5 @@ class GLIMRequest(BaseModel):
     cancer_site: str = Field("")
     cancer_stage: str = Field("")
     cancer_malnutrition_related: Optional[bool] = Field(None)
-    crp: float = Field(-1)
-    il6: float = Field(-1)
+    crp: Optional[float] = Field(None, ge=0)
+    il6: Optional[float] = Field(None, ge=0)

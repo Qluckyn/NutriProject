@@ -55,7 +55,19 @@ const acuteDiseaseOptions = computed(() => props.glimConfig?.inflammation_or_dis
 const malignantTumorOption = computed(() => (props.glimConfig?.inflammation_or_disease_burden?.chronic || diseaseOptions(['malignant_tumor'])).find((item) => item.id === 'malignant_tumor') || diseaseOptions(['malignant_tumor'])[0])
 const chronicDiseaseOptions = computed(() => (props.glimConfig?.inflammation_or_disease_burden?.chronic || diseaseOptions(['copd', 'heart_failure', 'ckd', 'chronic_liver', 'liver_cirrhosis', 'rheumatoid_arthritis', 'other'])).filter((item) => item.id !== 'malignant_tumor'))
 const malignantTumorSelected = computed(() => chronicDiseaseIds.value.includes('malignant_tumor'))
-const formReady = computed(() => Boolean(props.patient.age && props.patient.height && props.weights['0']))
+const isFiniteInRange = (value, min, max) => {
+  const numeric = Number(value)
+  return value !== '' && value !== null && value !== undefined && Number.isFinite(numeric) && numeric >= min && numeric <= max
+}
+const isValidInflammatoryMarker = (value) => value === '' || (Number.isFinite(Number(value)) && Number(value) >= 0)
+const formReady = computed(() => (
+  isFiniteInRange(props.patient.age, 0, 110)
+  && Number.isInteger(Number(props.patient.age))
+  && isFiniteInRange(props.patient.height, 100, 250)
+  && isFiniteInRange(props.weights['0'], 30, 200)
+  && isValidInflammatoryMarker(crp.value)
+  && isValidInflammatoryMarker(il6.value)
+))
 
 function diseaseOptions(ids) {
   return ids.map((id) => props.diseases.find((item) => item.id === id) || { id, name: fallbackDiseaseName(id) })
@@ -145,6 +157,8 @@ function formatEtiologicalCriteria(items = []) {
 function buildPayload() {
   const reducedIntake = intakeUnder50Over1w.value || anyIntakeReductionOver2w.value || giSymptoms.value.length > 0 || nutritionImpactConditions.value.length > 0
   return {
+    patient_name: props.patient.name || '',
+    gender: props.patient.gender || '',
     age: Number(props.patient.age),
     height: Number(props.patient.height),
     weight_records: Object.fromEntries(Object.entries(props.weights).filter(([, value]) => value !== '').map(([key, value]) => [key, Number(value)])),
@@ -160,8 +174,8 @@ function buildPayload() {
     cancer_site: cancerSite.value,
     cancer_stage: cancerStage.value,
     cancer_malnutrition_related: cancerMalnutritionRelated.value === '' ? null : cancerMalnutritionRelated.value === 'true',
-    crp: crp.value === '' ? -1 : Number(crp.value),
-    il6: il6.value === '' ? -1 : Number(il6.value),
+    crp: crp.value === '' ? null : Number(crp.value),
+    il6: il6.value === '' ? null : Number(il6.value),
   }
 }
 
@@ -169,7 +183,7 @@ async function submit() {
   touched.value = true
   if (!formReady.value) {
     emit('validation-failed')
-    errorMessage.value = '请先补全年龄、身高和当前体重。'
+    errorMessage.value = '请填写有效的年龄、身高、当前体重；CRP和IL-6需为非负数或留空。'
     return
   }
   loading.value = true
@@ -288,7 +302,7 @@ watch(result, (value) => {
 
       <div class="disease-section"><h3>摄食减少或消化吸收障碍</h3><label class="check-option"><input v-model="intakeUnder50Over1w" type="checkbox" /><span>摄入量≤50%的能量需求超过一周</span></label><label class="check-option"><input v-model="anyIntakeReductionOver2w" type="checkbox" /><span>任何摄入量减少超过2周</span></label><div class="disease-group"><h4>任何影响消化吸收的慢性胃肠状况</h4><label v-for="item in giSymptomOptions" :key="item.id" class="check-option"><input v-model="giSymptoms" type="checkbox" :value="item.id" /><span>{{ item.name }}</span></label></div><div class="disease-group"><h4>有关疾病</h4><label v-for="item in nutritionImpactOptions" :key="item.id" class="check-option"><input v-model="nutritionImpactConditions" type="checkbox" :value="item.id" /><span>{{ item.name }}</span></label></div></div>
 
-      <div class="disease-section"><h3>炎症或疾病负担</h3><div class="disease-group"><h4>急性疾病或损伤有关</h4><label v-for="item in acuteDiseaseOptions" :key="item.id" class="check-option"><input v-model="acuteDiseaseIds" type="checkbox" :value="item.id" /><span>{{ item.name }}</span></label></div><div class="disease-group"><h4>慢性或反复发作的疾病</h4><div class="cancer-option-block"><label class="check-option"><input v-model="chronicDiseaseIds" type="checkbox" :value="malignantTumorOption.id" /><span>{{ malignantTumorOption.name }}</span></label><div v-if="malignantTumorSelected" class="cancer-detail-grid"><label class="field-block"><span>具体部位</span><input v-model="cancerSite" type="text" placeholder="选填" /></label><label class="field-block"><span>癌症分期</span><select v-model="cancerStage"><option value="">选填</option><option value="早期">早</option><option value="中期">中</option><option value="晚期">晚</option><option value="终末期">终末期</option></select></label><div class="field-block"><span>此癌症是否是疾病相关性营养不良的病因</span><div class="segmented-options"><label><input v-model="cancerMalnutritionRelated" type="radio" value="true" />是</label><label><input v-model="cancerMalnutritionRelated" type="radio" value="false" />否</label><label><input v-model="cancerMalnutritionRelated" type="radio" value="" />未填</label></div></div></div></div><label v-for="item in chronicDiseaseOptions" :key="item.id" class="check-option"><input v-model="chronicDiseaseIds" type="checkbox" :value="item.id" /><span>{{ item.name }}</span></label></div><div class="disease-group inflammation-fields"><h4>炎症状态指标</h4><small>轻度、短暂的升高不纳入</small><label class="field-block"><span>CRP</span><input v-model="crp" type="number" min="0" step="0.1" placeholder="选填，如有检测结果请填写" /><small>mg/L</small></label><label class="field-block"><span>IL-6C</span><input v-model="il6" type="number" min="0" step="0.1" placeholder="选填，如有检测结果请填写" /><small>pg/mL</small></label></div></div>
+      <div class="disease-section"><h3>炎症或疾病负担</h3><div class="disease-group"><h4>急性疾病或损伤有关</h4><label v-for="item in acuteDiseaseOptions" :key="item.id" class="check-option"><input v-model="acuteDiseaseIds" type="checkbox" :value="item.id" /><span>{{ item.name }}</span></label></div><div class="disease-group"><h4>慢性或反复发作的疾病</h4><div class="cancer-option-block"><label class="check-option"><input v-model="chronicDiseaseIds" type="checkbox" :value="malignantTumorOption.id" /><span>{{ malignantTumorOption.name }}</span></label><div v-if="malignantTumorSelected" class="cancer-detail-grid"><label class="field-block"><span>具体部位</span><input v-model="cancerSite" type="text" placeholder="选填" /></label><label class="field-block"><span>癌症分期</span><select v-model="cancerStage"><option value="">选填</option><option value="早期">早</option><option value="中期">中</option><option value="晚期">晚</option><option value="终末期">终末期</option></select></label><div class="field-block"><span>此癌症是否是疾病相关性营养不良的病因</span><div class="segmented-options"><label><input v-model="cancerMalnutritionRelated" type="radio" value="true" />是</label><label><input v-model="cancerMalnutritionRelated" type="radio" value="false" />否</label><label><input v-model="cancerMalnutritionRelated" type="radio" value="" />未填</label></div></div></div></div><label v-for="item in chronicDiseaseOptions" :key="item.id" class="check-option"><input v-model="chronicDiseaseIds" type="checkbox" :value="item.id" /><span>{{ item.name }}</span></label></div><div class="disease-group inflammation-fields"><h4>炎症状态指标</h4><small>轻度、短暂的升高不纳入</small><label class="field-block"><span>CRP</span><input v-model="crp" type="number" min="0" step="0.1" placeholder="选填，如有检测结果请填写" /><small>mg/L</small></label><label class="field-block"><span>IL-6</span><input v-model="il6" type="number" min="0" step="0.1" placeholder="选填，如有检测结果请填写" /><small>pg/mL</small></label></div></div>
       <p v-if="errorMessage" class="error-alert compact-alert">{{ errorMessage }}</p>
       <button v-if="showSubmit" class="primary-button" type="button" :disabled="loading || !formReady" @click="submit"><span v-if="loading" class="spinner" aria-hidden="true"></span>{{ loading ? '评估中...' : '开始评估 - GLIM' }}</button>
       <p v-if="touched && !formReady" class="field-error">仍有必填项未完成。</p>

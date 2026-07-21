@@ -20,6 +20,7 @@ const emptyDraft = () => ({
   nrs2002_form: {},
   mnasf_form: {},
   glim_form: {},
+  image_screening_form: { giSymptoms: 'none', stressResponse: 'no_fever', ankleEdema: 'none' },
   images: { front: null, left: null, right: null },
   image_result: null,
   explain_result: null,
@@ -69,6 +70,7 @@ const weightRecords = reactive(Object.fromEntries(Array.from({ length: 13 }, (_,
 const intakeRecords = reactive({ 1: '', 2: '', 3: '', 4: '' })
 const intakeLastWeek = ref('')
 const imageFiles = reactive({ front: null, left: null, right: null })
+const imageScreeningForm = reactive({ giSymptoms: 'none', stressResponse: 'no_fever', ankleEdema: 'none' })
 const nrs2002Result = ref(null)
 const mnaSFResult = ref(null)
 const imageResult = ref(null)
@@ -76,6 +78,13 @@ const explainResult = ref(null)
 const showExplainResult = ref(false)
 const explainExpandToken = ref(0)
 const glimResult = ref(null)
+const personalizedAnalysis = ref(null)
+const personalizedLoading = ref(false)
+const personalizedError = ref('')
+const finalResultTab = ref('assessment')
+const reportDownloading = ref(false)
+const reportDownloadError = ref('')
+const reportMenuOpen = ref(false)
 // 综合结果页的勾选状态只用于当前前端会话，不写入草稿。
 const finalResultSelection = reactive({ nrs2002: false, mnaSF: false, image: false, glim: false })
 
@@ -92,12 +101,45 @@ const step2Ready = computed(() => validPatientInfo.value && validateWeightRecord
 const step4Ready = computed(() => validPatientInfo.value && validateWeightRecords(step4RequiredMonths) === '')
 const hasDraftImage = computed(() => Object.values(draftData.images || {}).some((item) => item?.saved))
 const canSubmitImage = computed(() => hasDraftImage.value && pendingImageUploads.value === 0 && !imageLoading.value)
+const imageWeightSgaText = computed(() => {
+  const current = Number(weightRecords['0'])
+  const sixMonthsAgo = Number(weightRecords['6'])
+  if (!Number.isFinite(current) || !Number.isFinite(sixMonthsAgo) || current <= 0 || sixMonthsAgo <= 0) return '未填写：SGA体重下降项不勾选'
+  const lossPct = (sixMonthsAgo - current) / sixMonthsAgo * 100
+  const lossText = `6个月内体重丢失${Math.max(0, Math.round(lossPct * 10) / 10)}%`
+  const oneMonthAgo = Number(weightRecords['1'])
+  if (lossPct > 10 && Number.isFinite(oneMonthAgo) && current > oneMonthAgo) return `SGA-A级：${lossText}（近6个月体重下降＞10％，但近1月内体重又恢复）`
+  if (lossPct < 5) return `SGA-A级：${lossText}（近6个月内体重下降较少）`
+  if (lossPct <= 10) return `SGA-B级：${lossText}（近6个月内体重下降达5％～10％）`
+  return `SGA-C级：${lossText}（近6个月体重下降＞10％）`
+})
+const imageDietSgaText = computed(() => ({
+  100: 'SGA-A级：摄食量为正常需求的3/4以上（摄食量无或较少减少）',
+  75: 'SGA-B级：摄食量为正常需求的1/2~3/4（摄食量减少）',
+  50: 'SGA-B级：摄食量为正常需求的1/4~1/2（摄食量减少）',
+  25: 'SGA-C级：摄食量为正常需求的0~1/4（摄食严重减少）',
+}[Number(intakeLastWeek.value)] || '未填写：SGA饮食改变项不勾选'))
+const imageMobilitySgaText = computed(() => {
+  if (skippedMnaSF.value) return 'MNA-SF已跳过：SGA活动能力项不勾选'
+  return ({
+    2: 'SGA-A级：无限制',
+    1: 'SGA-B级：正常活动受限',
+    0: 'SGA-C级：活动明显受限',
+  }[Number(draftData.mnasf_form?.mobility)] || '未填写：SGA活动能力项不勾选')
+})
 const finalResultOptions = computed(() => [
+
   { key: 'nrs2002', label: 'NRS-2002 营养风险筛查', visible: Boolean(nrs2002Result.value) },
   { key: 'mnaSF', label: 'MNA-SF 微型营养评估', visible: Boolean(mnaSFResult.value && !skippedMnaSF.value) },
   { key: 'image', label: '面部图像筛查', visible: Boolean(imageResult.value) },
   { key: 'glim', label: 'GLIM 营养不良评定', visible: Boolean(glimResult.value) },
 ])
+const availableReportItems = computed(() => [
+  nrs2002Result.value?.document_output && { key: 'nrs2002', label: 'NRS-2002' },
+  mnaSFResult.value?.document_output && !skippedMnaSF.value && { key: 'mnasf', label: 'MNA-SF' },
+  imageResult.value?.document_output && { key: 'image', label: '面部图像筛查（SGA）' },
+  glimResult.value?.document_output && { key: 'glim', label: 'GLIM' },
+].filter(Boolean))
 
 function replaceDraftData(nextDraft) {
   Object.assign(draftData, emptyDraft(), nextDraft || {})
@@ -109,6 +151,7 @@ function syncStateFromDraft() {
   Object.assign(weightRecords, Object.fromEntries(Array.from({ length: 13 }, (_, index) => [String(index), ''])), draftData.weight_records || {})
   Object.assign(intakeRecords, { 1: '', 2: '', 3: '', 4: '' }, draftData.intake_records || {})
   intakeLastWeek.value = intakeRecords['4'] || ''
+  Object.assign(imageScreeningForm, { giSymptoms: 'none', stressResponse: 'no_fever', ankleEdema: 'none' }, draftData.image_screening_form || {})
   nrs2002Result.value = draftData.nrs2002_result || null
   mnaSFResult.value = draftData.mnasf_result || null
   imageResult.value = draftData.image_result || null
@@ -128,11 +171,15 @@ function inferStepFromDraft() {
 }
 
 async function writeDraftNow() {
-  await fetch(`${API_BASE}/draft`, {
+  const response = await fetch(`${API_BASE}/draft`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(draftData),
   })
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    throw new Error(data.detail || '保存草稿失败。')
+  }
 }
 
 // 防抖保存完整草稿，步骤状态和表单数据统一交给后端草稿接口持久化。
@@ -225,6 +272,12 @@ function updateWeights(next) {
   saveDraft()
 }
 
+function updateImageScreeningField(field, value) {
+  imageScreeningForm[field] = value
+  draftData.image_screening_form = { ...imageScreeningForm }
+  saveDraft()
+}
+
 function updateWeeks(next) {
   validationMessage.value = ''
   Object.assign(intakeRecords, next)
@@ -243,7 +296,7 @@ function markValidationFailed(message = '仍有必填项未完成。') {
 }
 
 function validatePatientInfo() {
-  if (!patientInfo.age || !patientInfo.height) return '请先补全患者年龄和身高。'
+  if (patientInfo.age === '' || patientInfo.age === null || patientInfo.age === undefined || patientInfo.height === '' || patientInfo.height === null || patientInfo.height === undefined) return '请先补全患者年龄和身高。'
 
   const age = Number(patientInfo.age)
   if (!Number.isInteger(age) || age < 0 || age > 110) return '年龄需填写0到110之间的整数。'
@@ -262,9 +315,9 @@ function validateWeightRecords(requiredMonths = []) {
   const invalid = Object.entries(weightRecords).filter(([, value]) => {
     if (value === '' || value === null || value === undefined) return false
     const weight = Number(value)
-    return Number.isNaN(weight) || weight < 30 || weight > 100
+    return Number.isNaN(weight) || weight < 30 || weight > 200
   })
-  if (invalid.length) return '体重需填写30到100kg之间的数值。'
+  if (invalid.length) return '体重需填写30到200kg之间的数值。'
 
   return ''
 }
@@ -425,7 +478,71 @@ async function runExplainAnalysis() {
   }
 }
 
+async function triggerReportDownload(reportKey) {
+  // 下载接口从后端草稿读取 document_output；先完成当前草稿保存，
+  // 避免评估结果刚返回时后端尚未看到新生成的 GLIM 报告路径。
+  window.clearTimeout(draftTimer)
+  draftTimer = null
+  await writeDraftNow()
+  const response = await fetch(`${API_BASE}/reports/file/${reportKey}`)
+  if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.detail || '报告下载失败。') }
+  const disposition = response.headers.get('content-disposition') || ''
+  const filenameMatch = disposition.match(/filename\*=UTF-8\x27\x27([^;]+)|filename="?([^";]+)"?/i)
+  const filename = decodeURIComponent(filenameMatch?.[1] || filenameMatch?.[2] || `${reportKey}评估表.docx`)
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+async function downloadReport(report) {
+  reportMenuOpen.value = false
+  if (reportDownloading.value) return
+  reportDownloading.value = true
+  reportDownloadError.value = ''
+  try { await triggerReportDownload(report.key) }
+  catch (error) { reportDownloadError.value = error.message || '报告下载失败，请稍后重试。' }
+  finally { reportDownloading.value = false }
+}
+
+async function downloadAllReports() {
+  reportMenuOpen.value = false
+  if (reportDownloading.value || !availableReportItems.value.length) return
+  reportDownloading.value = true
+  reportDownloadError.value = ''
+  try {
+    // 不压缩：依次触发每个已生成 DOCX 的浏览器下载。
+    for (const report of availableReportItems.value) await triggerReportDownload(report.key)
+  } catch (error) {
+    reportDownloadError.value = error.message || '批量下载失败，请稍后重试。'
+  } finally { reportDownloading.value = false }
+}
+
+
+async function generatePersonalizedAnalysis() {
+  if (personalizedLoading.value) return
+  personalizedLoading.value = true
+  personalizedError.value = ''
+  try {
+    // 后端从草稿读取数据并脱敏后调用 Qwen，前端不接触模型密钥。
+    const response = await fetch(`${API_BASE}/analysis/personalized`, { method: 'POST' })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || '个性化建议生成失败，请稍后重试。')
+    personalizedAnalysis.value = data.analysis
+  } catch (error) {
+    personalizedError.value = error.message || '个性化建议暂不可用，请稍后重试。'
+  } finally {
+    personalizedLoading.value = false
+  }
+}
+
 async function resetFinalResultSelection() {
+  finalResultTab.value = 'assessment'
+  personalizedAnalysis.value = null
+  personalizedError.value = ''
+  personalizedLoading.value = false
   Object.assign(finalResultSelection, { nrs2002: false, mnaSF: false, image: false, glim: false })
 }
 
@@ -451,6 +568,9 @@ async function resetAll() {
   explainLoading.value = false
   showExplainResult.value = false
   resetFinalResultSelection()
+  personalizedAnalysis.value = null
+  personalizedError.value = ''
+  personalizedLoading.value = false
   currentStep.value = 1
 }
 
@@ -599,6 +719,29 @@ function glimDiagnosisReasons(value) {
   return reasons.length ? reasons : value.phenotypic_criteria_triggered
 }
 
+const imageScreeningLabels = {
+  giSymptoms: {
+    none: '无消化道症状',
+    mild_under_2w: '轻度消化道症状持续时间＜2周',
+    severe_over_2w: '重度消化道症状持续时间＞2周',
+  },
+  stressResponse: {
+    no_fever: '无发热',
+    temp_37_to_39_3d: '近3天体温波动在37℃～39℃之间',
+    temp_ge_39_over_3d: '体温≥39℃持续3天以上',
+  },
+  ankleEdema: {
+    none: '无',
+    mild_moderate: '轻度～中度',
+    severe: '重度',
+  },
+}
+
+function imageScreeningLabel(field) {
+  const value = imageScreeningForm[field]
+  return value ? imageScreeningLabels[field]?.[value] || value : '未填写'
+}
+
 function formatIntakeFraction(value) {
   if (value === "" || value === null || value === undefined) return "-"
   const labels = { 0: "占正常进食0 ~ 1/4", 25: "占正常进食0 ~ 1/4", 50: "占正常进食的1/4 ~ 1/2", 75: "占正常进食的1/2 ~ 3/4", 100: "占正常进食的3/4以上" }
@@ -659,6 +802,19 @@ function formatIntakeFraction(value) {
     </section>
 
     <section v-if="currentStep === 3" class="step-panel">
+      <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="[0, 6]" :required-months="[0]" :readonly-months="[0]" :month-labels="{ 0: '当前（0个月）', 6: '6个月以内' }" @update:model-value="updateWeights" />
+      <section class="form-card sga-source-card">
+        <div class="section-title-row"><div><p class="section-kicker">SGA sources</p><h2>SGA 勾选依据</h2></div><span class="muted-note">复用前序填写数据，只读展示</span></div>
+        <div class="result-metrics three"><div><span>体重下降</span><strong>{{ imageWeightSgaText }}</strong></div><div><span>饮食改变（最近一周摄食量）</span><strong>{{ imageDietSgaText }}</strong></div><div><span>活动能力（MNA-SF）</span><strong>{{ imageMobilitySgaText }}</strong></div></div>
+      </section>
+      <section class="form-card">
+        <div class="section-title-row"><div><p class="section-kicker">Clinical context</p><h2>临床补充信息</h2></div><span class="muted-note">均为选填，不参与面部 AI 预测</span></div>
+        <div class="form-grid">
+          <div class="field-block"><span>胃肠道症状</span><div class="radio-stack"><label><input :checked="imageScreeningForm.giSymptoms === 'none'" type="radio" name="gi-symptoms" @change="updateImageScreeningField('giSymptoms', 'none')" />无消化道症状</label><label><input :checked="imageScreeningForm.giSymptoms === 'mild_under_2w'" type="radio" name="gi-symptoms" @change="updateImageScreeningField('giSymptoms', 'mild_under_2w')" />轻度消化道症状持续时间＜2周</label><label><input :checked="imageScreeningForm.giSymptoms === 'severe_over_2w'" type="radio" name="gi-symptoms" @change="updateImageScreeningField('giSymptoms', 'severe_over_2w')" />重度消化道症状持续时间＞2周</label></div></div>
+          <div class="field-block"><span>应激反应</span><div class="radio-stack"><label><input :checked="imageScreeningForm.stressResponse === 'no_fever'" type="radio" name="stress-response" @change="updateImageScreeningField('stressResponse', 'no_fever')" />无发热</label><label><input :checked="imageScreeningForm.stressResponse === 'temp_37_to_39_3d'" type="radio" name="stress-response" @change="updateImageScreeningField('stressResponse', 'temp_37_to_39_3d')" />近3天体温波动在37℃～39℃之间</label><label><input :checked="imageScreeningForm.stressResponse === 'temp_ge_39_over_3d'" type="radio" name="stress-response" @change="updateImageScreeningField('stressResponse', 'temp_ge_39_over_3d')" />体温≥39℃持续3天以上</label></div></div>
+          <div class="field-block"><span>踝部水肿</span><div class="radio-stack"><label><input :checked="imageScreeningForm.ankleEdema === 'none'" type="radio" name="ankle-edema" @change="updateImageScreeningField('ankleEdema', 'none')" />无</label><label><input :checked="imageScreeningForm.ankleEdema === 'mild_moderate'" type="radio" name="ankle-edema" @change="updateImageScreeningField('ankleEdema', 'mild_moderate')" />轻度～中度</label><label><input :checked="imageScreeningForm.ankleEdema === 'severe'" type="radio" name="ankle-edema" @change="updateImageScreeningField('ankleEdema', 'severe')" />重度</label></div></div>
+        </div>
+      </section>
       <section class="workspace image-step-workspace">
         <div class="upload-grid">
           <ImageUploader v-for="item in uploaders" :key="item.key" :view-key="item.key" :title="item.title" :subtitle="item.subtitle" :reset-token="resetToken" @change="onFileChange" @error="onUploadError" />
@@ -696,7 +852,29 @@ function formatIntakeFraction(value) {
     </section>
 
     <section v-if="currentStep === 5" class="step-panel">
-      <section class="final-result-selector" aria-label="选择要查看的综合结果">
+      <!-- 一级标签将评估卡片与大模型建议分开，减少同屏信息密度。 -->
+      <nav class="final-tab-nav" aria-label="综合结果内容切换">
+        <button class="final-tab" :class="{ active: finalResultTab === 'assessment' }" type="button" @click="finalResultTab = 'assessment'">综合评估结果</button>
+        <button class="final-tab" :class="{ active: finalResultTab === 'advice' }" type="button" @click="finalResultTab = 'advice'">个性化营养建议</button>
+      </nav>
+
+
+      <section v-if="finalResultTab === 'assessment'" class="report-download-toolbar">
+        <span class="report-download-title">评估报告</span>
+        <div class="report-download-toolbar-actions">
+          <button class="primary-button" type="button" :disabled="reportDownloading || !availableReportItems.length" @click="downloadAllReports">{{ reportDownloading ? '下载准备中...' : '↓ 一键下载全部量表' }}</button>
+          <div class="report-menu-wrap">
+            <button class="secondary-button report-menu-trigger" type="button" :disabled="!availableReportItems.length" :aria-expanded="reportMenuOpen" @click="reportMenuOpen = !reportMenuOpen">单独下载 {{ reportMenuOpen ? '⌃' : '⌄' }}</button>
+            <div v-if="reportMenuOpen" class="report-download-menu">
+              <button v-for="report in availableReportItems" :key="report.key" type="button" :disabled="reportDownloading" @click="downloadReport(report)"><span>{{ report.label }}</span><strong>下载</strong></button>
+            </div>
+          </div>
+        </div>
+        <p v-if="!availableReportItems.length" class="report-empty">完成对应评估后可下载报告。</p>
+        <p v-if="reportDownloadError" class="error-alert">{{ reportDownloadError }}</p>
+      </section>
+
+      <section v-if="finalResultTab === 'assessment'" class="final-result-selector" aria-label="选择要查看的综合结果">
         <label v-for="option in finalResultOptions.filter((item) => item.visible)" :key="option.key" class="final-result-check">
           <input v-model="finalResultSelection[option.key]" type="checkbox" />
           <span>{{ option.label }}</span>
@@ -704,7 +882,26 @@ function formatIntakeFraction(value) {
         <p>请勾选需要查看的评估结果</p>
       </section>
 
-      <div class="final-results-grid">
+      <section v-if="finalResultTab === 'advice'" class="personalized-analysis" aria-live="polite">
+        <div class="personalized-analysis-header">
+          <div><h3>Qwen 个性化营养建议</h3><p>基于本次已完成的筛查结果生成，仅作辅助参考。</p></div>
+          <button class="primary-button" type="button" :disabled="personalizedLoading" @click="generatePersonalizedAnalysis">
+            <span v-if="personalizedLoading" class="spinner" aria-hidden="true"></span>
+            {{ personalizedLoading ? '生成中...' : personalizedAnalysis ? '重新生成' : '生成个性化建议' }}
+          </button>
+        </div>
+        <p v-if="personalizedError" class="error-alert">{{ personalizedError }}</p>
+        <div v-if="personalizedAnalysis" class="personalized-analysis-content">
+          <p class="analysis-summary">{{ personalizedAnalysis.summary }}</p>
+          <div v-if="personalizedAnalysis.key_findings?.length"><h4>重点发现</h4><ul><li v-for="item in personalizedAnalysis.key_findings" :key="item">{{ item }}</li></ul></div>
+          <div v-if="personalizedAnalysis.suggestions?.length"><h4>建议行动</h4><ul><li v-for="item in personalizedAnalysis.suggestions" :key="item">{{ item }}</li></ul></div>
+          <p><strong>随访建议：</strong>{{ personalizedAnalysis.follow_up }}</p>
+          <p v-if="personalizedAnalysis.urgent_signs?.length" class="analysis-urgent"><strong>需要及时就医的情况：</strong>{{ personalizedAnalysis.urgent_signs.join('；') }}</p>
+          <p class="analysis-disclaimer">{{ personalizedAnalysis.disclaimer }}</p>
+        </div>
+      </section>
+
+      <div v-if="finalResultTab === 'assessment'" class="final-results-grid">
         <section v-if="nrs2002Result && finalResultSelection.nrs2002" class="assessment-result" :class="nrs2002Result.has_risk ? 'risk' : 'good'">
           <h3 class="final-result-title">NRS-2002 营养风险筛查</h3>
           <div class="score-hero"><span>总分</span><strong>{{ nrs2002Result.total_score }}</strong><em>{{ nrs2002Result.risk_level }}</em></div>
@@ -846,6 +1043,88 @@ function formatIntakeFraction(value) {
   margin-top: 0;
 }
 
+/* 紧凑下载工具栏：常用的批量下载常驻，单份下载按需展开。 */
+.report-download-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid #dceaf2;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.report-download-title { color: #10253f; font-size: 14px; font-weight: 900; }
+.report-download-toolbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.report-download-toolbar .secondary-button { margin-top: 0; }
+.report-menu-wrap { position: relative; }
+.report-menu-trigger { min-width: 104px; }
+.report-download-menu {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid #cfe1eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(20, 48, 70, 0.16);
+}
+
+.report-download-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #263746;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.report-download-menu button:hover { background: #eefaff; }
+.report-download-menu strong { color: #1689a7; }
+.report-download-toolbar .report-empty, .report-download-toolbar .error-alert { flex-basis: 100%; margin: 0; }
+
+/* 最终页一级标签：评估结果与建议一次只展示一个工作区。 */
+.final-tab-nav {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #dceaf2;
+  border-radius: 10px;
+  background: #f7fbfd;
+}
+
+.final-tab {
+  flex: 1 1 0;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #607181;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.final-tab.active {
+  background: #1689a7;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(22, 137, 167, 0.2);
+}
+
 .final-result-selector {
   display: flex;
   flex-wrap: wrap;
@@ -911,11 +1190,54 @@ function formatIntakeFraction(value) {
   margin-top: 0;
 }
 
+/* 大模型建议独立展示，避免和各量表卡片混排造成阅读负担。 */
+.personalized-analysis {
+  padding: 18px;
+  border: 1px solid #b9dce9;
+  border-radius: 10px;
+  background: #f4fbfe;
+}
+
+.personalized-analysis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.personalized-analysis h3, .personalized-analysis h4 { margin: 0; color: #10253f; }
+.personalized-analysis-header p, .analysis-disclaimer { margin: 6px 0 0; color: #607181; font-size: 13px; }
+.personalized-analysis-content { display: grid; gap: 12px; margin-top: 16px; color: #263746; line-height: 1.65; }
+.personalized-analysis-content p { margin: 0; }
+.personalized-analysis-content ul { margin: 6px 0 0; padding-left: 22px; }
+.analysis-summary { font-size: 16px; font-weight: 800; }
+.analysis-urgent { color: #a9432c; }
+
 @media (max-width: 900px) {
   .linear-stepper,
   .final-results-grid {
     grid-template-columns: 1fr;
   }
+
+
+
+
+  .report-download-toolbar-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+
+  .final-tab-nav {
+    gap: 4px;
+  }
+
+  .final-tab {
+    padding-inline: 8px;
+    font-size: 13px;
+  }
+
 
   .action-spacer {
     display: none;

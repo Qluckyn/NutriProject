@@ -13,6 +13,7 @@ from model_loader import (
     round4,
 )
 from services.draft_service import draft_500, draft_image_path, read_draft_file
+from services import scale_document_service
 
 # 面部图像推理和服务状态接口路由。
 router = APIRouter()
@@ -66,6 +67,7 @@ async def predict(
         "malnourished_probability": round4(mal_prob),
         "normal_probability": round4(normal_prob),
         "confidence": round4(confidence),
+        "sga_normalized_score": round4(mal_prob * 7),
         "n_views_used": len(views_used),
         "views_used": views_used,
         "per_view_scores": per_view_scores,
@@ -96,16 +98,19 @@ def predict_from_draft_images() -> Dict[str, object]:
 
         prediction, mal_prob, normal_prob = aggregate_scores(per_view_scores)
         confidence = max(mal_prob, normal_prob)
-        return {
+        result = {
             "prediction": prediction,
             "malnourished_probability": round4(mal_prob),
             "normal_probability": round4(normal_prob),
             "confidence": round4(confidence),
+            "sga_normalized_score": round4(mal_prob * 7),
             "n_views_used": len(views_used),
             "views_used": views_used,
             "per_view_scores": per_view_scores,
             "message": build_message(prediction, mal_prob, views_used),
         }
+        result["document_output"] = scale_document_service.generate_sga_document(draft, result)
+        return result
     except HTTPException:
         raise
     except Exception as exc:
