@@ -4,7 +4,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from PIL import Image
 
 from model_loader import read_image
-from services.draft_service import draft_500, draft_image_path, read_draft_file
+from services.draft_service import draft_500, draft_image_path, read_draft_file, save_draft_explanation_images
 from services.explain_service import TARGET_CLASS_NOTE, explain_single_view
 
 router = APIRouter()
@@ -50,7 +50,9 @@ def explain_roi_from_draft_images() -> Dict[str, object]:
 
         if not views:
             raise HTTPException(status_code=400, detail="请至少先上传并保存一张面部图片。")
-        return _build_response(views)
+        response = _build_response(views)
+        save_draft_explanation_images(response)
+        return response
     except HTTPException:
         raise
     except Exception as exc:

@@ -66,6 +66,7 @@ transform = transforms.Compose(
 
 DRAFT_FILE = "./draft_data.json"
 DRAFT_IMAGE_DIR = "./draft_images"
+DRAFT_EXPLAIN_DIR = "./draft_explain_images"
 # Qwen 配置只从服务端环境变量读取，避免 API Key 暴露给浏览器或写入仓库。
 QWEN_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
 QWEN_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").rstrip("/")

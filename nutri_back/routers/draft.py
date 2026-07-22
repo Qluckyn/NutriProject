@@ -9,11 +9,14 @@ from PIL import Image
 from config import DRAFT_IMAGE_DIR
 from model_loader import validate_image_file
 from services.draft_service import (
+    clear_draft_explanation_images,
     default_draft_data,
+    draft_explain_image_path,
     draft_500,
     draft_image_path,
     ensure_draft_view,
     read_draft_file,
+    save_draft_explanation_images,
     write_draft_file,
 )
 
@@ -34,7 +37,11 @@ def get_draft() -> Dict[str, object]:
 def save_draft(data: Dict[str, object]) -> Dict[str, object]:
     """接收前端完整草稿并覆盖保存。"""
     try:
+        if isinstance(data.get("explain_result"), dict):
+            save_draft_explanation_images(data["explain_result"])
         write_draft_file(data)
+        if not data.get("explain_result"):
+            clear_draft_explanation_images()
         return {"saved": True}
     except Exception as exc:
         draft_500("保存草稿失败", exc)
@@ -49,6 +56,7 @@ def clear_draft() -> Dict[str, object]:
         for image_file in image_dir.iterdir():
             if image_file.is_file():
                 image_file.unlink()
+        clear_draft_explanation_images()
         initial_data = default_draft_data()
         write_draft_file(initial_data)
         return initial_data
@@ -93,6 +101,20 @@ def get_draft_image(view: str) -> FileResponse:
         raise
     except Exception as exc:
         draft_500("读取草稿图片失败", exc)
+
+
+@router.get("/draft/explain/{view}/{kind}")
+def get_draft_explanation_image(view: str, kind: str) -> FileResponse:
+    """返回草稿中保存的可解释性 PNG。"""
+    try:
+        path = draft_explain_image_path(view, kind)
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="可解释性图片不存在。")
+        return FileResponse(str(path), media_type="image/png")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        draft_500("读取可解释性图片失败", exc)
 
 
 @router.delete("/draft/image/{view}")

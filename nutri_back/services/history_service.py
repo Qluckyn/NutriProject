@@ -69,6 +69,9 @@ def create(advice=None):
     folder_name = '{}_{}'.format(created_at.strftime('%Y%m%d_%H%M%S'), rid[:8])
     name = str((draft.get('patient_info') or {}).get('name') or '未命名患者')
     snap = json.loads(json.dumps(draft, ensure_ascii=False))
+    # 热力图仅服务于当前草稿会话：允许刷新后恢复查看，但不写入历史快照。
+    # 历史归档只保留原始面部图片、量表结果、DOCX 及其余表单数据。
+    snap.pop('explain_result', None)
 
     folder = REPORTS / folder_name
     report_folder = folder / 'reports'

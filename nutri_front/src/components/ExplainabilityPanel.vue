@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { API_BASE } from '../config'
 
 const props = defineProps({
   result: {
@@ -46,6 +47,12 @@ const selectedView = computed(() => {
 })
 
 const selectedResult = computed(() => props.result?.views?.[selectedView.value] || null)
+
+function explainImageSrc(kind) {
+  const result = selectedResult.value
+  const file = result?.[`${kind}_file`]
+  return file ? `${API_BASE}/draft/explain/${selectedView.value}/${kind}` : result?.[`${kind}_base64`] || ''
+}
 
 watch(
   () => props.result,
@@ -100,12 +107,12 @@ watch(
           <article class="explain-card">
             <template v-if="selectedResult?.status === 'ok'">
               <div class="explain-image-grid">
-                <figure class="explain-figure">
-                  <img class="explain-image" :src="selectedResult.heatmap_base64" :alt="`${viewLabels[selectedView]}热力图`" />
+                <figure v-if="explainImageSrc('heatmap')" class="explain-figure">
+                  <img class="explain-image" :src="explainImageSrc('heatmap')" :alt="`${viewLabels[selectedView]}热力图`" />
                   <figcaption>模型关注热力图</figcaption>
                 </figure>
-                <figure v-if="selectedResult.roi_overlay_base64" class="explain-figure">
-                  <img class="explain-image" :src="selectedResult.roi_overlay_base64" :alt="`${viewLabels[selectedView]}Clinical ROI划分图`" />
+                <figure v-if="explainImageSrc('roi_overlay')" class="explain-figure">
+                  <img class="explain-image" :src="explainImageSrc('roi_overlay')" :alt="`${viewLabels[selectedView]}Clinical ROI划分图`" />
                   <figcaption>Clinical ROI划分区域</figcaption>
                 </figure>
               </div>

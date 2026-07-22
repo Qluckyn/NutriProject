@@ -28,6 +28,7 @@ const emptyDraft = () => ({
   nrs2002_result: null,
   mnasf_result: null,
   glim_result: null,
+  personalized_analysis: null,
 })
 
 const steps = [
@@ -82,7 +83,7 @@ const glimResult = ref(null)
 const personalizedAnalysis = ref(null)
 const personalizedLoading = ref(false)
 const personalizedError = ref('')
-const finalResultTab = ref('assessment')
+const finalResultTab = ref('advice')
 const reportDownloading = ref(false)
 const reportDownloadError = ref('')
 const reportMenuOpen = ref(false)
@@ -163,6 +164,7 @@ function syncStateFromDraft() {
   explainResult.value = draftData.explain_result || null
   showExplainResult.value = Boolean(explainResult.value)
   glimResult.value = draftData.glim_result || null
+  personalizedAnalysis.value = draftData.personalized_analysis || null
   skippedMnaSF.value = Boolean(draftData.skipped_mnasf)
   currentStep.value = Number(draftData.current_step || inferStepFromDraft())
 }
@@ -556,6 +558,8 @@ async function generatePersonalizedAnalysis() {
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(data.detail || '个性化建议生成失败，请稍后重试。')
     personalizedAnalysis.value = data.analysis
+    draftData.personalized_analysis = data.analysis
+    await writeDraftNow()
   } catch (error) {
     personalizedError.value = error.message || '个性化建议暂不可用，请稍后重试。'
   } finally {
@@ -564,8 +568,9 @@ async function generatePersonalizedAnalysis() {
 }
 
 async function resetFinalResultSelection() {
-  finalResultTab.value = 'assessment'
+  finalResultTab.value = 'advice'
   personalizedAnalysis.value = null
+  draftData.personalized_analysis = null
   personalizedError.value = ''
   personalizedLoading.value = false
   Object.assign(finalResultSelection, { nrs2002: false, mnaSF: false, image: false, glim: false })
@@ -880,8 +885,8 @@ function formatIntakeFraction(value) {
     <section v-if="currentStep === 5" class="step-panel">
       <!-- 一级标签将评估卡片与大模型建议分开，减少同屏信息密度。 -->
       <nav class="final-tab-nav" aria-label="综合结果内容切换">
-        <button class="final-tab" :class="{ active: finalResultTab === 'assessment' }" type="button" @click="finalResultTab = 'assessment'">综合评估结果</button>
         <button class="final-tab" :class="{ active: finalResultTab === 'advice' }" type="button" @click="finalResultTab = 'advice'">个性化营养建议</button>
+        <button class="final-tab" :class="{ active: finalResultTab === 'assessment' }" type="button" @click="finalResultTab = 'assessment'">综合评估结果</button>
       </nav>
 
 
@@ -913,7 +918,7 @@ function formatIntakeFraction(value) {
 
       <section v-if="finalResultTab === 'advice'" class="personalized-analysis" aria-live="polite">
         <div class="personalized-analysis-header">
-          <div><h3>Qwen 个性化营养建议</h3><p>基于本次已完成的筛查结果生成，仅作辅助参考。</p></div>
+          <div><h3>Qwen 个性化营养建议</h3><p>基于本次筛查风险提示生成，仅作辅助参考，不能判定营养状况。</p></div>
           <button class="primary-button" type="button" :disabled="personalizedLoading" @click="generatePersonalizedAnalysis">
             <span v-if="personalizedLoading" class="spinner" aria-hidden="true"></span>
             {{ personalizedLoading ? '生成中...' : personalizedAnalysis ? '重新生成' : '生成个性化建议' }}
@@ -921,11 +926,14 @@ function formatIntakeFraction(value) {
         </div>
         <p v-if="personalizedError" class="error-alert">{{ personalizedError }}</p>
         <div v-if="personalizedAnalysis" class="personalized-analysis-content">
-          <p class="analysis-summary">{{ personalizedAnalysis.summary }}</p>
-          <div v-if="personalizedAnalysis.key_findings?.length"><h4>重点发现</h4><ul><li v-for="item in personalizedAnalysis.key_findings" :key="item">{{ item }}</li></ul></div>
-          <div v-if="personalizedAnalysis.suggestions?.length"><h4>建议行动</h4><ul><li v-for="item in personalizedAnalysis.suggestions" :key="item">{{ item }}</li></ul></div>
-          <p><strong>随访建议：</strong>{{ personalizedAnalysis.follow_up }}</p>
-          <p v-if="personalizedAnalysis.urgent_signs?.length" class="analysis-urgent"><strong>需要及时就医的情况：</strong>{{ personalizedAnalysis.urgent_signs.join('；') }}</p>
+          <section class="analysis-summary-card"><p class="analysis-eyebrow">本次筛查摘要</p><p class="analysis-summary">{{ personalizedAnalysis.summary }}</p></section>
+          <div class="analysis-main-grid">
+            <section v-if="personalizedAnalysis.key_findings?.length" class="analysis-block analysis-findings"><h4>重点发现</h4><ul><li v-for="item in personalizedAnalysis.key_findings" :key="item">{{ item }}</li></ul></section>
+            <section v-if="personalizedAnalysis.suggestions?.length" class="analysis-block analysis-actions"><h4>建议行动</h4><ol><li v-for="item in personalizedAnalysis.suggestions" :key="item">{{ item }}</li></ol></section>
+          </div>
+          <section class="analysis-follow-up"><h4>随访建议</h4><ul v-if="Array.isArray(personalizedAnalysis.follow_up)"><li v-for="item in personalizedAnalysis.follow_up" :key="item">{{ item }}</li></ul><p v-else>{{ personalizedAnalysis.follow_up }}</p></section>
+          <details v-if="personalizedAnalysis.missing_information?.length" class="analysis-info-gap"><summary>为进一步个性化，建议补充信息</summary><ul><li v-for="item in personalizedAnalysis.missing_information" :key="item">{{ item }}</li></ul></details>
+          <section v-if="personalizedAnalysis.urgent_signs?.length" class="analysis-urgent"><h4>需要尽快专业评估</h4><p>{{ personalizedAnalysis.urgent_signs.join('；') }}</p></section>
           <p class="analysis-disclaimer">{{ personalizedAnalysis.disclaimer }}</p>
         </div>
       </section>
@@ -1222,10 +1230,11 @@ function formatIntakeFraction(value) {
 
 /* 大模型建议独立展示，避免和各量表卡片混排造成阅读负担。 */
 .personalized-analysis {
-  padding: 18px;
-  border: 1px solid #b9dce9;
-  border-radius: 10px;
-  background: #f4fbfe;
+  padding: 24px;
+  border: 1px solid #d8e7ee;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(16, 37, 63, 0.05);
 }
 
 .personalized-analysis-header {
@@ -1233,20 +1242,45 @@ function formatIntakeFraction(value) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e6eef2;
 }
 
 .personalized-analysis h3, .personalized-analysis h4 { margin: 0; color: #10253f; }
 .personalized-analysis-header p, .analysis-disclaimer { margin: 6px 0 0; color: #607181; font-size: 13px; }
-.personalized-analysis-content { display: grid; gap: 12px; margin-top: 16px; color: #263746; line-height: 1.65; }
+.personalized-analysis-content { display: grid; gap: 16px; margin-top: 18px; color: #263746; font-size: 15px; line-height: 1.75; }
 .personalized-analysis-content p { margin: 0; }
-.personalized-analysis-content ul { margin: 6px 0 0; padding-left: 22px; }
-.analysis-summary { font-size: 16px; font-weight: 800; }
-.analysis-urgent { color: #a9432c; }
+.analysis-summary-card { padding: 16px 18px; border-left: 4px solid #1689a7; border-radius: 8px; background: #eff9fc; }
+.analysis-eyebrow { margin: 0 0 5px !important; color: #147a92; font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+.analysis-summary { font-size: 16px; font-weight: 500; }
+.analysis-main-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.analysis-block, .analysis-follow-up { padding: 16px 18px; border: 1px solid #e0ebf1; border-radius: 10px; background: #fff; }
+.analysis-block h4, .analysis-follow-up h4, .analysis-urgent h4 { font-size: 15px; font-weight: 800; }
+.analysis-block ul, .analysis-block ol, .analysis-info-gap ul { margin: 10px 0 0; padding-left: 22px; }
+.analysis-block li, .analysis-info-gap li { margin-top: 8px; }
+.analysis-actions { border-color: #c7e4ec; background: #f7fcfd; }
+.analysis-actions li::marker { color: #147a92; font-weight: 800; }
+.analysis-follow-up { display: grid; gap: 6px; background: #f3f9fc; }.analysis-follow-up ul { margin: 4px 0 0; padding-left: 22px; }.analysis-follow-up li { margin-top: 7px; }
+.analysis-info-gap { padding: 12px 14px; border-radius: 8px; background: #f5f9fc; color: #52606d; }
+.analysis-info-gap summary { cursor: pointer; color: #35546a; font-weight: 700; }
+.analysis-urgent { padding: 14px 16px; border-left: 4px solid #c75b42; border-radius: 8px; background: #fff5f0; color: #a9432c; }
+.analysis-urgent p { margin-top: 6px; font-weight: 600; }
+.analysis-disclaimer { padding-top: 2px; }
 
 @media (max-width: 900px) {
   .linear-stepper,
-  .final-results-grid {
+  .final-results-grid,
+  .analysis-main-grid {
     grid-template-columns: 1fr;
+  }
+
+  .personalized-analysis {
+    padding: 18px;
+  }
+
+  .personalized-analysis-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
 
