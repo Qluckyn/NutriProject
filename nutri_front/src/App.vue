@@ -1308,3 +1308,60 @@ function formatIntakeFraction(value) {
   }
 }
 </style>
+@media (max-width: 640px) {
+  .linear-stepper {
+    grid-template-columns: repeat(5, minmax(128px, 1fr));
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .linear-step {
+    min-height: 50px;
+    padding: 8px;
+  }
+
+  .step-label {
+    font-size: 12px;
+  }
+
+  .linear-step em {
+    display: none;
+  }
+
+  .final-tab-nav {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .final-tab {
+    min-height: 46px;
+    font-size: 14px;
+  }
+
+  .report-download-toolbar,
+  .personalized-analysis {
+    padding: 14px;
+  }
+
+  .report-download-toolbar-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .report-download-toolbar-actions > button {
+    width: 100%;
+  }
+
+  .report-menu-wrap,
+  .report-menu-trigger {
+    width: 100%;
+  }
+
+  .report-download-menu {
+    right: auto;
+    left: 0;
+    width: 100%;
+    min-width: 0;
+  }
+}

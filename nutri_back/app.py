@@ -5,8 +5,9 @@ from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
 import model_loader
-from routers import analysis, assess, diseases, draft, explain, history, predict, reports
+from routers import analysis, assess, diseases, draft, explain, history, predict, reports, session_api
 from services import diseases_service, draft_service, history_service
+from services.session_draft_service import init_session_storage
 
 # FastAPI应用入口：只负责实例创建、中间件、异常处理、路由挂载和启动初始化。
 app = FastAPI(
@@ -40,6 +41,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+app.include_router(session_api.router)
 app.include_router(predict.router)
 app.include_router(assess.router)
 app.include_router(analysis.router)
@@ -55,4 +57,5 @@ def startup() -> None:
     model_loader.load_model()
     diseases_service.load_diseases_config()
     draft_service.init_draft_storage()
+    init_session_storage()
     history_service.init_history_storage()

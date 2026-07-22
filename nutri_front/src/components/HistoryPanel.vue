@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { API_BASE } from '../config'
+import { API_BASE, apiUrl } from '../config'
 
 const props = defineProps({ open: Boolean })
 const emit = defineEmits(['close'])
@@ -44,9 +44,24 @@ async function remove(id) {
   if (!response.ok) { error.value = '删除历史记录失败。'; return }
   detail.value = null; await load()
 }
-function downloadReport(filename) { window.open(`${API_BASE}/history/${detail.value.id}/reports/${encodeURIComponent(filename)}`, '_blank', 'noopener') }
-function downloadAllReports() {
-  reports.value.filter((item) => item.result.history_report).forEach((item) => downloadReport(item.result.history_report))
+async function downloadReport(filename) {
+  try {
+    const response = await fetch(`${API_BASE}/history/${detail.value.id}/reports/${encodeURIComponent(filename)}`)
+    if (!response.ok) throw new Error('历史报告下载失败。')
+    const url = URL.createObjectURL(await response.blob())
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    error.value = err.message || '历史报告下载失败。'
+  }
+}
+async function downloadAllReports() {
+  for (const item of reports.value.filter((entry) => entry.result.history_report)) {
+    await downloadReport(item.result.history_report)
+  }
 }
 function resultText(key, result) {
   if (key === 'nrs2002_result') return `总分 ${result.total_score} 分（${result.total_score}/7）· ${result.risk_level}`
@@ -74,7 +89,7 @@ function resultText(key, result) {
         <div class="history-actions"><button class="secondary-button" type="button" @click="detail = null">← 返回列表</button><button class="danger-button" type="button" @click="remove(detail.id)">删除此记录</button></div>
         <h3 class="record-title">{{ detail.created_at }}_{{ detail.patient_name }}</h3>
         <section class="patient-card"><h4>患者信息</h4><span>姓名：{{ detail.snapshot.patient_info?.name || '未填写' }}</span><span>性别：{{ detail.snapshot.patient_info?.gender === 'female' ? '女' : '男' }}</span><span>年龄：{{ detail.snapshot.patient_info?.age || '未填写' }} 岁</span><span>身高：{{ detail.snapshot.patient_info?.height || '未填写' }} cm</span></section>
-        <section v-if="historyImages.length" class="history-section"><h4>面部图像</h4><div class="image-grid"><figure v-for="viewName in historyImages" :key="viewName"><img :src="`${API_BASE}/history/${detail.id}/images/${viewName}`" :alt="`${viewName} 面部图像`"><figcaption>{{ { front: '正面', left: '左45°', right: '右45°' }[viewName] }}</figcaption></figure></div></section>
+        <section v-if="historyImages.length" class="history-section"><h4>面部图像</h4><div class="image-grid"><figure v-for="viewName in historyImages" :key="viewName"><img :src="apiUrl(`${API_BASE}/history/${detail.id}/images/${viewName}`)" :alt="`${viewName} 面部图像`"><figcaption>{{ { front: '正面', left: '左45°', right: '右45°' }[viewName] }}</figcaption></figure></div></section>
         <section class="history-section"><div class="report-section-header"><h4>评估结果与 DOCX 报告</h4><button v-if="reports.some((item) => item.result.history_report)" class="secondary-button" type="button" @click="downloadAllReports">↓ 一键下载全部量表</button></div><article v-for="item in reports" :key="item.key" class="result-card"><h5>{{ item.label }}</h5><p>{{ resultText(item.key, item.result) }}</p><button v-if="item.result.history_report" class="secondary-button" type="button" @click="downloadReport(item.result.history_report)">↓ 下载 DOCX 报告</button></article></section>
         <section class="history-section history-advice"><h4>个性化营养建议</h4><template v-if="detail.personalized_analysis"><section class="history-advice-summary"><p class="history-advice-eyebrow">本次筛查摘要</p><p>{{ detail.personalized_analysis.summary }}</p></section><div class="history-advice-grid"><section v-if="detail.personalized_analysis.key_findings?.length" class="history-advice-block"><h5>重点发现</h5><ul><li v-for="item in detail.personalized_analysis.key_findings" :key="item">{{ item }}</li></ul></section><section v-if="detail.personalized_analysis.suggestions?.length" class="history-advice-block history-advice-actions"><h5>建议行动</h5><ol><li v-for="item in detail.personalized_analysis.suggestions" :key="item">{{ item }}</li></ol></section></div><section v-if="detail.personalized_analysis.follow_up" class="history-follow-up"><h5>随访建议</h5><ul v-if="Array.isArray(detail.personalized_analysis.follow_up)"><li v-for="item in detail.personalized_analysis.follow_up" :key="item">{{ item }}</li></ul><p v-else>{{ detail.personalized_analysis.follow_up }}</p></section><details v-if="detail.personalized_analysis.missing_information?.length" class="history-advice-gap"><summary>为进一步个性化，建议补充信息</summary><ul><li v-for="item in detail.personalized_analysis.missing_information" :key="item">{{ item }}</li></ul></details><section v-if="detail.personalized_analysis.urgent_signs?.length" class="history-advice-urgent"><h5>需要尽快专业评估</h5><p>{{ detail.personalized_analysis.urgent_signs.join('；') }}</p></section><p v-if="detail.personalized_analysis.disclaimer" class="history-advice-disclaimer">{{ detail.personalized_analysis.disclaimer }}</p></template><p v-else class="muted">本次归档时尚未生成个性化营养建议。</p></section>
       </template>

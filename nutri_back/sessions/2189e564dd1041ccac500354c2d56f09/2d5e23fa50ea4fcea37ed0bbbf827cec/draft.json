@@ -1,13 +1,7 @@
 {
   "current_step": 1,
   "skipped_mnasf": false,
-  "patient_info": {
-    "name": "",
-    "age": "65",
-    "gender": "female",
-    "height": "165",
-    "calfCircumference": ""
-  },
+  "patient_info": {},
   "weight_records": {},
   "intake_records": {},
   "nrs2002_form": {},

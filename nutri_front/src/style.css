@@ -1004,3 +1004,123 @@ button {
 .assessment-advice .secondary-button {
   margin-top: 0;
 }
+/* 手机端：保证单手触控、表单阅读和图片上传的可用空间。 */
+@media (max-width: 640px) {
+  body {
+    min-width: 0;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .page-shell {
+    width: min(100% - 20px, 1180px);
+    padding: 18px 0 42px;
+  }
+
+  .history-button {
+    position: static;
+    display: flex;
+    width: fit-content;
+    min-height: 42px;
+    margin: 0 0 16px auto;
+  }
+
+  .page-header {
+    margin-bottom: 18px;
+  }
+
+  .page-header h1 {
+    font-size: 24px;
+    line-height: 1.25;
+  }
+
+  .page-header p:last-child {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .workspace,
+  .form-card,
+  .result-panel,
+  .assessment-result {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .upload-card,
+  .preview-image {
+    min-height: 210px;
+  }
+
+  .upload-placeholder {
+    padding: 16px;
+  }
+
+  .primary-button,
+  .secondary-button {
+    min-width: 0;
+    min-height: 46px;
+    padding: 0 14px;
+  }
+
+  .step-actions > button {
+    width: 100%;
+  }
+
+  .main-tab-bar,
+  .sub-tab-bar {
+    gap: 8px;
+  }
+
+  .main-tab-bar button,
+  .sub-tab-bar button {
+    min-height: 46px;
+    padding: 8px 12px;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .weight-table {
+    min-width: 460px;
+  }
+
+  .weight-table th,
+  .weight-table td {
+    padding: 8px;
+  }
+
+  .inflammation-fields,
+  .cancer-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inflammation-fields h4,
+  .inflammation-fields > small {
+    grid-column: auto;
+  }
+
+  .disease-group {
+    padding: 12px;
+  }
+
+  .segmented-options,
+  .radio-stack {
+    gap: 8px;
+  }
+
+  .segmented-options label,
+  .radio-stack label,
+  .check-option {
+    min-height: 42px;
+  }
+
+  .assessment-toolbar {
+    justify-content: stretch;
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -1,6 +1,6 @@
 <script setup>
 import { inject, onMounted, ref, watch } from 'vue'
-import { API_BASE } from '../config'
+import { API_BASE, apiUrl } from '../config'
 
 const props = defineProps({
   viewKey: {
@@ -37,7 +37,7 @@ function restoreDraftPreview() {
   const imageInfo = draftContext?.draftData.images?.[props.viewKey]
   if (imageInfo?.saved) {
     clearPreview()
-    previewUrl.value = `${API_BASE}/draft/image/${props.viewKey}?t=${Date.now()}`
+    previewUrl.value = apiUrl(`${API_BASE}/draft/image/${props.viewKey}?t=${Date.now()}`)
     previewIsObjectUrl.value = false
   }
 }

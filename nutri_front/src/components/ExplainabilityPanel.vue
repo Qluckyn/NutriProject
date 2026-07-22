@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { API_BASE } from '../config'
+import { API_BASE, apiUrl } from '../config'
 
 const props = defineProps({
   result: {
@@ -51,7 +51,7 @@ const selectedResult = computed(() => props.result?.views?.[selectedView.value] 
 function explainImageSrc(kind) {
   const result = selectedResult.value
   const file = result?.[`${kind}_file`]
-  return file ? `${API_BASE}/draft/explain/${selectedView.value}/${kind}` : result?.[`${kind}_base64`] || ''
+  return file ? apiUrl(`${API_BASE}/draft/explain/${selectedView.value}/${kind}`) : result?.[`${kind}_base64`] || ''
 }
 
 watch(
