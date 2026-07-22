@@ -16,3 +16,6 @@ def delete_history(record_id:str): return history_service.delete(record_id)
 @router.get('/history/{record_id}/reports/{filename}')
 def history_report(record_id:str,filename:str):
  p=history_service.report(record_id,filename); return FileResponse(p,filename=p.name)
+@router.get('/history/{record_id}/images/{view}')
+def history_image(record_id: str, view: str):
+ p=history_service.image(record_id, view); return FileResponse(p, media_type='image/jpeg')

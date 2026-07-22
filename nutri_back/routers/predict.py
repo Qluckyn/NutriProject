@@ -12,7 +12,7 @@ from model_loader import (
     read_image,
     round4,
 )
-from services.draft_service import draft_500, draft_image_path, read_draft_file
+from services.draft_service import draft_500, draft_image_path, read_draft_file, save_assessment_result
 from services import scale_document_service
 
 # 面部图像推理和服务状态接口路由。
@@ -110,6 +110,7 @@ def predict_from_draft_images() -> Dict[str, object]:
             "message": build_message(prediction, mal_prob, views_used),
         }
         result["document_output"] = scale_document_service.generate_sga_document(draft, result)
+        save_assessment_result("image_result", result)
         return result
     except HTTPException:
         raise

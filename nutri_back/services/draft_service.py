@@ -52,6 +52,17 @@ def write_draft_file(data: Dict[str, object]) -> None:
         json.dump(data, file, ensure_ascii=False, indent=2)
 
 
+def save_assessment_result(result_key: str, result: Dict[str, object]) -> None:
+    """Merge one completed assessment result into the existing draft.
+
+    The report path is persisted as soon as its DOCX is generated, so report
+    downloads do not depend on a later full-draft save from the browser.
+    """
+    draft = read_draft_file()
+    draft[result_key] = result
+    write_draft_file(draft)
+
+
 def ensure_draft_view(view: str) -> None:
     if view not in DRAFT_VIEWS:
         raise HTTPException(status_code=400, detail="图片视角只能是 front、left 或 right。")

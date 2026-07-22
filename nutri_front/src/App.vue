@@ -10,6 +10,7 @@ import ExplainabilityPanel from './components/ExplainabilityPanel.vue'
 import NRS2002Form from './components/NRS2002Form.vue'
 import MNASFForm from './components/MNASFForm.vue'
 import GLIMForm from './components/GLIMForm.vue'
+import HistoryPanel from './components/HistoryPanel.vue'
 
 const emptyDraft = () => ({
   current_step: 1,
@@ -85,6 +86,10 @@ const finalResultTab = ref('assessment')
 const reportDownloading = ref(false)
 const reportDownloadError = ref('')
 const reportMenuOpen = ref(false)
+const historyOpen = ref(false)
+const historySaving = ref(false)
+const historyArchiveMessage = ref('')
+const historyArchiveError = ref('')
 // 综合结果页的勾选状态只用于当前前端会话，不写入草稿。
 const finalResultSelection = reactive({ nrs2002: false, mnaSF: false, image: false, glim: false })
 
@@ -479,11 +484,8 @@ async function runExplainAnalysis() {
 }
 
 async function triggerReportDownload(reportKey) {
-  // 下载接口从后端草稿读取 document_output；先完成当前草稿保存，
-  // 避免评估结果刚返回时后端尚未看到新生成的 GLIM 报告路径。
-  window.clearTimeout(draftTimer)
-  draftTimer = null
-  await writeDraftNow()
+  // 评估接口生成 DOCX 后已立即将结果及 document_output 写入后端草稿，
+  // 下载无需再上传完整草稿（其中可能包含较大的 Base64 可解释性图片）。
   const response = await fetch(`${API_BASE}/reports/file/${reportKey}`)
   if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.detail || '报告下载失败。') }
   const disposition = response.headers.get('content-disposition') || ''
@@ -513,11 +515,34 @@ async function downloadAllReports() {
   reportDownloading.value = true
   reportDownloadError.value = ''
   try {
-    // 不压缩：依次触发每个已生成 DOCX 的浏览器下载。
+    // 不压缩：依次触发每个已生成 DOCX 的浏览器下载，不重复保存草稿。
     for (const report of availableReportItems.value) await triggerReportDownload(report.key)
   } catch (error) {
     reportDownloadError.value = error.message || '批量下载失败，请稍后重试。'
   } finally { reportDownloading.value = false }
+}
+
+async function archiveCurrentHistory() {
+  if (historySaving.value) return
+  historySaving.value = true
+  historyArchiveMessage.value = ''
+  historyArchiveError.value = ''
+  try {
+    // 归档是明确的保存动作：先一次性保存当前表单快照，再由后端复制 DOCX 和图片。
+    await writeDraftNow()
+    const response = await fetch(`${API_BASE}/history`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ personalized_analysis: personalizedAnalysis.value }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || '保存历史记录失败。')
+    historyArchiveMessage.value = `已保存为历史记录：${data.created_at}_${data.patient_name}`
+  } catch (error) {
+    historyArchiveError.value = error.message || '保存历史记录失败。'
+  } finally {
+    historySaving.value = false
+  }
 }
 
 
@@ -752,7 +777,8 @@ function formatIntakeFraction(value) {
 
 <template>
   <main class="page-shell">
-    <header class="page-header">
+  <header class="page-header">
+    <button class="history-button" type="button" @click="historyOpen = true">历史记录</button>
       <p class="eyebrow">Nutri Screening</p>
       <h1>营养状态筛查系统</h1>
       <p>基于面部图像与临床量表的老年营养不良辅助筛查</p>
@@ -869,9 +895,12 @@ function formatIntakeFraction(value) {
               <button v-for="report in availableReportItems" :key="report.key" type="button" :disabled="reportDownloading" @click="downloadReport(report)"><span>{{ report.label }}</span><strong>下载</strong></button>
             </div>
           </div>
+          <button class="secondary-button" type="button" :disabled="historySaving" @click="archiveCurrentHistory">{{ historySaving ? '保存中...' : '保存本次记录' }}</button>
         </div>
         <p v-if="!availableReportItems.length" class="report-empty">完成对应评估后可下载报告。</p>
         <p v-if="reportDownloadError" class="error-alert">{{ reportDownloadError }}</p>
+        <p v-if="historyArchiveError" class="error-alert">{{ historyArchiveError }}</p>
+        <p v-if="historyArchiveMessage" class="success-alert">{{ historyArchiveMessage }}</p>
       </section>
 
       <section v-if="finalResultTab === 'assessment'" class="final-result-selector" aria-label="选择要查看的综合结果">
@@ -938,6 +967,7 @@ function formatIntakeFraction(value) {
       </div>
     </section>
   </main>
+  <HistoryPanel :open="historyOpen" @close="historyOpen = false" />
 </template>
 
 <style scoped>

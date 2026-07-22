@@ -36,6 +36,6 @@ def _report_path(report_key: str) -> Path:
 @router.get("/reports/file/{report_key}")
 def download_report(report_key: str) -> FileResponse:
     """下载单个已生成的 DOCX 报告。"""
-    return FileResponse(_report_path(report_key), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename=_report_path(report_key).name)
-
+    report_path = _report_path(report_key)
+    return FileResponse(report_path, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename=report_path.name)
 
