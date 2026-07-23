@@ -7,7 +7,7 @@ from model_loader import read_image
 from services.draft_service import draft_500, draft_image_path, read_draft_file, save_draft_explanation_images
 from services.explain_service import TARGET_CLASS_NOTE, explain_single_view
 
-router = APIRouter()
+router = APIRouter(deprecated=True)
 
 
 def _build_response(views: Dict[str, Dict[str, object]]) -> Dict[str, object]:

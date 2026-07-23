@@ -24,3 +24,9 @@ nutri_front/.env.*.local
 nutri_back/.env
 nutri_back/.env.local
 nutri_back/.env.*.local
+
+# 后端运行时产生的患者数据、历史报告与量表输出
+nutri_back/history.db
+nutri_back/history_reports/
+nutri_back/sessions/
+nutri_back/scales/outputs/

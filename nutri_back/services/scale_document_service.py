@@ -6,6 +6,8 @@ from typing import Any, Dict
 from docx import Document
 from docx.oxml.ns import qn
 
+from services import sga_service
+
 
 SCALES_DIR = Path(__file__).resolve().parents[1] / "scales"
 OUTPUT_DIR = SCALES_DIR / "outputs"
@@ -283,6 +285,35 @@ def _sga_grade_from_weight(records: Dict[str, Any]) -> Any:
     return 2
 
 
+def _sga_overall_result(grades: list[Any]) -> str:
+    if any(grade is None for grade in grades):
+        return "SGA评估信息不足"
+    c_count = sum(grade == 2 for grade in grades)
+    bc_count = sum(grade >= 1 for grade in grades)
+    if c_count >= 5:
+        return "SGA-C级"
+    if bc_count >= 5:
+        return "SGA-B级"
+    return "SGA-A级"
+
+
+def sga_overall_result(draft: Dict[str, Any], result: Dict[str, Any]) -> str:
+    """Compatibility wrapper; the SGA service is the sole grading authority."""
+    return sga_service.evaluate_sga(draft, result)["code"]
+
+
+def _fill_sga_overall_result(document: Any, value: str) -> None:
+    for paragraph in document.paragraphs:
+        if "营养状况评估结果：" not in paragraph.text:
+            continue
+        for run in paragraph.runs:
+            if run.font.underline and not run.text.strip():
+                run.text = value
+                return
+        paragraph.add_run(value)
+        return
+
+
 def generate_sga_document(draft: Dict[str, Any], result: Dict[str, Any]) -> str:
     patient = draft.get("patient_info") or {}
     payload = {"patient_name": patient.get("name", ""), "gender": patient.get("gender", ""), "age": patient.get("age", "")}
@@ -306,7 +337,10 @@ def generate_sga_document(draft: Dict[str, Any], result: Dict[str, Any]) -> str:
         _mark_sga_grade(table, 3, gi_grade)
 
     mna_form = draft.get("mnasf_form") or {}
-    mobility_grade = {"2": 0, "1": 1, "0": 2}.get(str(mna_form.get("mobility")))
+    mobility_value = mna_form.get("mobility")
+    if mobility_value is None:
+        mobility_value = ((draft.get("mnasf_result") or {}).get("score_breakdown") or {}).get("q3_mobility")
+    mobility_grade = {"2": 0, "1": 1, "0": 2}.get(str(mobility_value))
     if mobility_grade is not None:
         _mark_sga_grade(table, 4, mobility_grade)
 
@@ -322,6 +356,8 @@ def generate_sga_document(draft: Dict[str, Any], result: Dict[str, Any]) -> str:
     edema_grade = {"none": 0, "mild_moderate": 1, "severe": 2}.get(image_form.get("ankleEdema"))
     if edema_grade is not None:
         _mark_sga_grade(table, 8, edema_grade)
+
+    _fill_sga_overall_result(document, sga_service.evaluate_sga(draft, result)["code"])
 
     output_path = _new_output_path("SGA", payload)
     document.save(output_path)

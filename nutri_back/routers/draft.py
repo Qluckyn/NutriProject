@@ -21,7 +21,7 @@ from services.draft_service import (
 )
 
 # 草稿JSON和草稿图片持久化接口路由。
-router = APIRouter()
+router = APIRouter(deprecated=True)
 
 
 @router.get("/draft")

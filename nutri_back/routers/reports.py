@@ -10,7 +10,7 @@ from services.draft_service import read_draft_file
 from services.scale_document_service import OUTPUT_DIR
 
 # 下载只允许读取本次草稿中已生成的四类量表文件，防止任意路径读取。
-router = APIRouter()
+router = APIRouter(deprecated=True)
 _REPORTS: Dict[str, Tuple[str, str]] = {
     "nrs2002": ("nrs2002_result", "NRS-2002 营养风险筛查"),
     "mnasf": ("mnasf_result", "MNA-SF 微型营养评估"),

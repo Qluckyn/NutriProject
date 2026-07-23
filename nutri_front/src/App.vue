@@ -11,6 +11,7 @@ import NRS2002Form from './components/NRS2002Form.vue'
 import MNASFForm from './components/MNASFForm.vue'
 import GLIMForm from './components/GLIMForm.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
+import SGAResultCard from './components/SGAResultCard.vue'
 
 const emptyDraft = () => ({
   current_step: 1,
@@ -68,7 +69,7 @@ const mnaFormRef = ref(null)
 const glimFormRef = ref(null)
 let draftTimer = null
 
-const patientInfo = reactive({ name: '', age: '', gender: 'male', height: '', calfCircumference: '' })
+const patientInfo = reactive({ name: '', recordNumber: '', consultingDoctor: '', age: '', gender: 'male', height: '', calfCircumference: '' })
 const weightRecords = reactive(Object.fromEntries(Array.from({ length: 13 }, (_, index) => [String(index), ''])))
 const intakeRecords = reactive({ 1: '', 2: '', 3: '', 4: '' })
 const intakeLastWeek = ref('')
@@ -107,33 +108,9 @@ const step1Ready = computed(() => validPatientInfo.value && validateWeightRecord
 const step2Ready = computed(() => validPatientInfo.value && validateWeightRecords(step2RequiredMonths) === '' && intakeLastWeek.value !== '')
 const step4Ready = computed(() => validPatientInfo.value && validateWeightRecords(step4RequiredMonths) === '')
 const hasDraftImage = computed(() => Object.values(draftData.images || {}).some((item) => item?.saved))
-const canSubmitImage = computed(() => hasDraftImage.value && pendingImageUploads.value === 0 && !imageLoading.value)
-const imageWeightSgaText = computed(() => {
-  const current = Number(weightRecords['0'])
-  const sixMonthsAgo = Number(weightRecords['6'])
-  if (!Number.isFinite(current) || !Number.isFinite(sixMonthsAgo) || current <= 0 || sixMonthsAgo <= 0) return '未填写：SGA体重下降项不勾选'
-  const lossPct = (sixMonthsAgo - current) / sixMonthsAgo * 100
-  const lossText = `6个月内体重丢失${Math.max(0, Math.round(lossPct * 10) / 10)}%`
-  const oneMonthAgo = Number(weightRecords['1'])
-  if (lossPct > 10 && Number.isFinite(oneMonthAgo) && current > oneMonthAgo) return `SGA-A级：${lossText}（近6个月体重下降＞10％，但近1月内体重又恢复）`
-  if (lossPct < 5) return `SGA-A级：${lossText}（近6个月内体重下降较少）`
-  if (lossPct <= 10) return `SGA-B级：${lossText}（近6个月内体重下降达5％～10％）`
-  return `SGA-C级：${lossText}（近6个月体重下降＞10％）`
-})
-const imageDietSgaText = computed(() => ({
-  100: 'SGA-A级：摄食量为正常需求的3/4以上（摄食量无或较少减少）',
-  75: 'SGA-B级：摄食量为正常需求的1/2~3/4（摄食量减少）',
-  50: 'SGA-B级：摄食量为正常需求的1/4~1/2（摄食量减少）',
-  25: 'SGA-C级：摄食量为正常需求的0~1/4（摄食严重减少）',
-}[Number(intakeLastWeek.value)] || '未填写：SGA饮食改变项不勾选'))
-const imageMobilitySgaText = computed(() => {
-  if (skippedMnaSF.value) return 'MNA-SF已跳过：SGA活动能力项不勾选'
-  return ({
-    2: 'SGA-A级：无限制',
-    1: 'SGA-B级：正常活动受限',
-    0: 'SGA-C级：活动明显受限',
-  }[Number(draftData.mnasf_form?.mobility)] || '未填写：SGA活动能力项不勾选')
-})
+const canSubmitImage = computed(() => pendingImageUploads.value === 0 && !imageLoading.value)
+const sgaEvaluation = computed(() => imageResult.value?.sga_evaluation || null)
+
 const finalResultOptions = computed(() => [
 
   { key: 'nrs2002', label: 'NRS-2002 营养风险筛查', visible: Boolean(nrs2002Result.value) },
@@ -154,7 +131,7 @@ function replaceDraftData(nextDraft) {
 }
 
 function syncStateFromDraft() {
-  Object.assign(patientInfo, { name: '', age: '', gender: 'male', height: '', calfCircumference: '' }, draftData.patient_info || {})
+  Object.assign(patientInfo, { name: '', recordNumber: '', consultingDoctor: '', age: '', gender: 'male', height: '', calfCircumference: '' }, draftData.patient_info || {})
   Object.assign(weightRecords, Object.fromEntries(Array.from({ length: 13 }, (_, index) => [String(index), ''])), draftData.weight_records || {})
   Object.assign(intakeRecords, { 1: '', 2: '', 3: '', 4: '' }, draftData.intake_records || {})
   intakeLastWeek.value = intakeRecords['4'] || ''
@@ -446,6 +423,28 @@ function onUploadError(message) {
 // 图片已在选择时保存到后端草稿；筛查时直接让后端读取草稿图片，避免二次上传。
 async function submitPrediction() {
   if (!canSubmitImage.value) return
+  if (!hasDraftImage.value) {
+    imageError.value = ''
+    explainResult.value = null
+    draftData.explain_result = null
+    showExplainResult.value = false
+    imageLoading.value = true
+    try {
+      await saveDraftNow()
+      const response = await fetch(`${API_BASE}/sga/evaluation`, { method: 'POST' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.detail || 'SGA 评估请求失败，请稍后重试。')
+      imageResult.value = data
+      draftData.image_result = data
+      draftData.skipped_image = true
+      await saveDraftNow()
+    } catch (error) {
+      imageError.value = error.message || 'SGA 评估请求失败，请稍后重试。'
+    } finally {
+      imageLoading.value = false
+    }
+    return
+  }
   imageLoading.value = true
   explainLoading.value = false
   imageError.value = ''
@@ -863,10 +862,6 @@ function formatIntakeFraction(value) {
 
     <section v-if="currentStep === 3" class="step-panel">
       <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="[0, 6]" :required-months="[0]" :readonly-months="[0]" :month-labels="{ 0: '当前（0个月）', 6: '6个月以内' }" @update:model-value="updateWeights" />
-      <section class="form-card sga-source-card">
-        <div class="section-title-row"><div><p class="section-kicker">SGA sources</p><h2>SGA 勾选依据</h2></div><span class="muted-note">复用前序填写数据，只读展示</span></div>
-        <div class="result-metrics three"><div><span>体重下降</span><strong>{{ imageWeightSgaText }}</strong></div><div><span>饮食改变（最近一周摄食量）</span><strong>{{ imageDietSgaText }}</strong></div><div><span>活动能力（MNA-SF）</span><strong>{{ imageMobilitySgaText }}</strong></div></div>
-      </section>
       <section class="form-card">
         <div class="section-title-row"><div><p class="section-kicker">Clinical context</p><h2>临床补充信息</h2></div><span class="muted-note">均为选填，不参与面部 AI 预测</span></div>
         <div class="form-grid">
@@ -881,12 +876,13 @@ function formatIntakeFraction(value) {
         </div>
         <p v-if="imageError" class="error-alert">{{ imageError }}</p>
       </section>
-      <ResultPanel v-if="imageResult" :result="imageResult" :show-actions="false" />
-      <ExplainabilityPanel v-if="showExplainResult" :result="explainResult" :loading="explainLoading" :error="explainError" :expand-token="explainExpandToken" />
+      <ResultPanel v-if="imageResult && !imageResult.sga_only" :result="imageResult" :show-actions="false" />
+      <SGAResultCard :evaluation="sgaEvaluation" />
+      <ExplainabilityPanel v-if="showExplainResult && !imageResult?.sga_only" :result="explainResult" :loading="explainLoading" :error="explainError" :expand-token="explainExpandToken" />
       <div class="step-actions split-actions">
         <button class="secondary-button" type="button" @click="goPrevious">上一步</button>
         <span class="action-spacer"></span>
-        <button v-if="imageResult && !showExplainResult" class="secondary-button" type="button" :disabled="explainLoading" @click="runExplainAnalysis">
+        <button v-if="imageResult && !imageResult.sga_only && !showExplainResult" class="secondary-button" type="button" :disabled="explainLoading" @click="runExplainAnalysis">
           <span v-if="explainLoading" class="spinner" aria-hidden="true"></span>
           <span v-if="explainLoading">可解释性分析中...</span>
           <span v-else>可解释性分析</span>
@@ -895,7 +891,6 @@ function formatIntakeFraction(value) {
           <span v-if="imageLoading" class="spinner" aria-hidden="true"></span>
           {{ imageLoading ? '分析中...' : pendingImageUploads > 0 ? '图片保存中...' : '开始筛查' }}
         </button>
-        <button v-if="!imageResult" class="secondary-button" type="button" @click="skipImageScreening">跳过此步骤</button>
         <button v-if="imageResult" class="primary-button" type="button" @click="currentStep = 4">下一步</button>
       </div>
     </section>
@@ -985,8 +980,9 @@ function formatIntakeFraction(value) {
         </section>
 
         <div v-if="imageResult && finalResultSelection.image" class="image-result-stack">
-          <ResultPanel :result="imageResult" :show-actions="false" panel-title="面部图像筛查" />
-          <ExplainabilityPanel :result="explainResult" :loading="explainLoading" :error="explainError" />
+          <ResultPanel v-if="!imageResult.sga_only" :result="imageResult" :show-actions="false" panel-title="面部图像筛查" />
+          <SGAResultCard :evaluation="sgaEvaluation" />
+          <ExplainabilityPanel v-if="!imageResult.sga_only" :result="explainResult" :loading="explainLoading" :error="explainError" />
         </div>
 
         <section v-if="glimResult && finalResultSelection.glim" class="assessment-result" :class="glimResult.is_malnourished ? 'risk' : 'good'">

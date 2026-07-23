@@ -88,7 +88,7 @@ watch(
         <p class="section-kicker">Patient</p>
         <h2>患者基本信息</h2>
       </div>
-      <span class="muted-note">{{ collapsed ? '如需修改，请返回步骤1' : '姓名选填，其余关键字段用于量表计算' }}</span>
+      <span class="muted-note">{{ collapsed ? '如需修改，请返回步骤1' : '姓名、登记号/住院号和会诊医生均为选填' }}</span>
     </div>
 
     <div v-if="collapsed" class="result-metrics three">
@@ -110,6 +110,16 @@ watch(
       <label class="field-block">
         <span>姓名</span>
         <input :value="modelValue.name" type="text" placeholder="选填" :disabled="readonly" @input="updateField('name', $event.target.value)" />
+      </label>
+
+      <label class="field-block">
+        <span>登记号/住院号</span>
+        <input :value="modelValue.recordNumber" type="text" placeholder="选填" :disabled="readonly" @input="updateField('recordNumber', $event.target.value)" />
+      </label>
+
+      <label class="field-block">
+        <span>会诊医生</span>
+        <input :value="modelValue.consultingDoctor" type="text" placeholder="选填" :disabled="readonly" @input="updateField('consultingDoctor', $event.target.value)" />
       </label>
 
       <label class="field-block" :class="{ invalid: isMissing('age') || isInvalidAge() }">

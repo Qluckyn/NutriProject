@@ -39,7 +39,7 @@ def info() -> Dict[str, object]:
     }
 
 
-@router.post("/predict")
+@router.post("/predict", deprecated=True)
 async def predict(
     front: Optional[UploadFile] = File(None),
     left: Optional[UploadFile] = File(None),
@@ -75,7 +75,7 @@ async def predict(
     }
 
 
-@router.post("/predict/draft")
+@router.post("/predict/draft", deprecated=True)
 def predict_from_draft_images() -> Dict[str, object]:
     """直接使用已保存的草稿图片进行面部筛查，避免前端在预测时二次上传图片。"""
     try:

@@ -17,7 +17,7 @@ from config import DRAFT_VIEWS
 from model_loader import aggregate_scores, build_message, predict_one_view, round4, validate_image_file
 from routers import assess as assess_router
 from schemas.assess_schemas import GLIMRequest, MNASFRequest, NRS2002Request
-from services import assess_service, scale_document_service
+from services import assess_service, scale_document_service, export_excel_service, sga_service
 from services.draft_service import draft_500
 from services.explain_service import TARGET_CLASS_NOTE, explain_single_view
 from services.qwen_analysis_service import generate_personalized_analysis
@@ -44,6 +44,10 @@ def _history_db() -> sqlite3.Connection:
         con.execute("UPDATE history SET folder_name = id WHERE folder_name IS NULL OR trim(folder_name) = ''")
     if "session_id" not in columns:
         con.execute("ALTER TABLE history ADD COLUMN session_id TEXT")
+    con.execute("CREATE TABLE IF NOT EXISTS export_overrides (record_id TEXT PRIMARY KEY, values_json TEXT NOT NULL, updated_at TEXT NOT NULL, excluded INTEGER NOT NULL DEFAULT 0)")
+    override_columns = {row[1] for row in con.execute("PRAGMA table_info(export_overrides)")}
+    if "excluded" not in override_columns:
+        con.execute("ALTER TABLE export_overrides ADD COLUMN excluded INTEGER NOT NULL DEFAULT 0")
     return con
 
 
@@ -150,6 +154,7 @@ def predict_draft(scope: DraftScope = Depends(get_draft_scope)):
             raise HTTPException(400, "请至少先上传并保存一张面部图片。")
         prediction, mal, normal = aggregate_scores(scores)
         result = {"prediction": prediction, "malnourished_probability": round4(mal), "normal_probability": round4(normal), "confidence": round4(max(mal, normal)), "sga_normalized_score": round4(mal * 7), "n_views_used": len(used), "views_used": used, "per_view_scores": scores, "message": build_message(prediction, mal, used)}
+        result["sga_evaluation"] = sga_service.evaluate_sga(draft, result)
         result["document_output"] = scale_document_service.generate_sga_document(draft, result)
         save_result(scope, "image_result", result)
         return result
@@ -157,6 +162,16 @@ def predict_draft(scope: DraftScope = Depends(get_draft_scope)):
         raise
     except Exception as exc:
         draft_500("草稿图片筛查失败", exc)
+
+
+@router.post("/sga/evaluation")
+def evaluate_sga_without_image(scope: DraftScope = Depends(get_draft_scope)):
+    """Persist a server-calculated SGA result when the user chooses the no-image flow."""
+    draft = read_draft(scope)
+    result = {"sga_only": True}
+    result["sga_evaluation"] = sga_service.evaluate_sga(draft, None)
+    save_result(scope, "image_result", result)
+    return result
 
 
 @router.post("/explain/roi/draft")
@@ -243,6 +258,60 @@ def save_history(payload: Dict[str, object], scope: DraftScope = Depends(get_dra
     return {"id": record_id, "created_at": now.strftime("%Y-%m-%d %H:%M:%S")}
 
 
+@router.get("/history/export.xlsx")
+def download_history_export(scope: DraftScope = Depends(get_draft_scope)):
+    with _history_db() as con:
+        rows = con.execute("SELECT history.id, history.created_at, history.snapshot, export_overrides.values_json, COALESCE(export_overrides.excluded, 0) FROM history LEFT JOIN export_overrides ON export_overrides.record_id = history.id ORDER BY history.created_at ASC").fetchall()
+    workbook = export_excel_service.build_history_export(rows)
+    return Response(
+        workbook,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename*=UTF-8''%E5%AF%BC%E5%87%BA%E4%BF%A1%E6%81%AF.xlsx", "Cache-Control": "no-store"},
+    )
+
+
+@router.get("/history/{record_id}/export-info")
+def get_history_export_info(record_id: str, scope: DraftScope = Depends(get_draft_scope)):
+    row = _history_row(scope, record_id)
+    defaults = export_excel_service.export_values(json.loads(row[3]), row[1])
+    with _history_db() as con:
+        override = con.execute("SELECT values_json, excluded FROM export_overrides WHERE record_id = ?", (record_id,)).fetchone()
+    excluded = False
+    if override:
+        try:
+            defaults.update({column: str(value or "") for column, value in json.loads(override[0]).items() if column in export_excel_service.EXPORT_COLUMNS})
+        except (TypeError, ValueError):
+            pass
+        excluded = bool(override[1])
+    return {"values": defaults, "excluded": excluded}
+
+
+@router.put("/history/{record_id}/export-info")
+def update_history_export_info(record_id: str, payload: Dict[str, object], scope: DraftScope = Depends(get_draft_scope)):
+    _history_row(scope, record_id)
+    values = payload.get("values")
+    if not isinstance(values, dict):
+        raise HTTPException(422, "导出信息格式不正确。")
+    normalized = {column: str(value or "")[:500] for column, value in values.items() if column in export_excel_service.EXPORT_COLUMNS}
+    if set(normalized) != set(export_excel_service.EXPORT_COLUMNS):
+        raise HTTPException(422, "请完整提交导出信息的 A 至 L 列。")
+    with _history_db() as con:
+        con.execute("INSERT INTO export_overrides (record_id, values_json, updated_at, excluded) VALUES (?, ?, ?, 0) ON CONFLICT(record_id) DO UPDATE SET values_json = excluded.values_json, updated_at = excluded.updated_at, excluded = 0", (record_id, json.dumps(normalized, ensure_ascii=False), datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    return {"values": normalized}
+
+
+@router.delete("/history/{record_id}/export-info")
+def exclude_history_export_info(record_id: str, scope: DraftScope = Depends(get_draft_scope)):
+    row = _history_row(scope, record_id)
+    defaults = export_excel_service.export_values(json.loads(row[3]), row[1])
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with _history_db() as con:
+        existing = con.execute("SELECT values_json FROM export_overrides WHERE record_id = ?", (record_id,)).fetchone()
+        values_json = existing[0] if existing else json.dumps(defaults, ensure_ascii=False)
+        con.execute("INSERT INTO export_overrides (record_id, values_json, updated_at, excluded) VALUES (?, ?, ?, 1) ON CONFLICT(record_id) DO UPDATE SET excluded = 1, updated_at = excluded.updated_at", (record_id, values_json, now))
+    return {"excluded": True}
+
+
 @router.get("/history")
 def list_history(scope: DraftScope = Depends(get_draft_scope)):
     with _history_db() as con:
@@ -263,6 +332,7 @@ def delete_history(record_id: str, scope: DraftScope = Depends(get_draft_scope))
     if ARCHIVES.resolve() not in folder.parents:
         raise HTTPException(404, "历史记录不存在。")
     with _history_db() as con:
+        con.execute("DELETE FROM export_overrides WHERE record_id = ?", (record_id,))
         con.execute("DELETE FROM history WHERE id = ?", (record_id,))
     shutil.rmtree(folder, ignore_errors=True)
     return {"deleted": True}

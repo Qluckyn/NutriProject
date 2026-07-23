@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from services import history_service
-router=APIRouter()
+router=APIRouter(deprecated=True)
 class Save(BaseModel): personalized_analysis: Optional[Dict[str,object]]=None
 @router.get('/history')
 def list_history(): return history_service.list_all()

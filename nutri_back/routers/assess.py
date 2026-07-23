@@ -7,7 +7,7 @@ from services import assess_service, scale_document_service
 from services.draft_service import save_assessment_result
 
 # 临床营养评估量表接口路由。
-router = APIRouter()
+router = APIRouter(deprecated=True)
 
 
 @router.post("/assess/nrs2002")
