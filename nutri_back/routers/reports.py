@@ -1,8 +1,10 @@
+from io import BytesIO
 from pathlib import Path
+import zipfile
 from typing import Dict, Tuple
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from services.draft_service import read_draft_file
 from services.scale_document_service import OUTPUT_DIR
@@ -39,3 +41,28 @@ def download_report(report_key: str) -> FileResponse:
     report_path = _report_path(report_key)
     return FileResponse(report_path, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename=report_path.name)
 
+
+
+@router.get("/reports/archive")
+def download_reports_archive() -> Response:
+    """将当前草稿中全部已生成的 DOCX 报告打包为单个 ZIP 下载。"""
+    draft = read_draft_file()
+    report_keys = [key for key, (result_key, _) in _REPORTS.items() if (draft.get(result_key) or {}).get("document_output")]
+    if draft.get("skipped_mnasf"):
+        report_keys = [key for key in report_keys if key != "mnasf"]
+    if not report_keys:
+        raise HTTPException(status_code=404, detail="暂无可下载的评估报告。")
+
+    archive = BytesIO()
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        for report_key in report_keys:
+            path = _report_path(report_key)
+            bundle.write(path, arcname=path.name)
+    return Response(
+        archive.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": "attachment; filename=assessment_reports.zip",
+            "Cache-Control": "no-store",
+        },
+    )

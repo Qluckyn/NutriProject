@@ -3,7 +3,9 @@ import json
 import shutil
 import sqlite3
 import uuid
+import zipfile
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -60,8 +62,8 @@ def _folder_path(rid):
 
 def create(advice=None):
     draft = read_draft_file()
-    if not all(draft.get(key) for key in ('nrs2002_result', 'image_result', 'glim_result')):
-        raise HTTPException(422, '请先完成 NRS-2002、面部图像筛查和 GLIM 评估。')
+    if not draft.get('nrs2002_result') or not draft.get('glim_result') or (not draft.get('image_result') and not draft.get('skipped_image')):
+        raise HTTPException(422, '请先完成 NRS-2002、GLIM 评估，并完成或跳过面部图像筛查。')
 
     rid = uuid.uuid4().hex
     created_at = datetime.now()
@@ -148,6 +150,24 @@ def report(rid, name):
         if folder in path.parents and path.is_file() and path.suffix == '.docx':
             return path
     raise HTTPException(404, '历史报告不存在。')
+
+
+def reports_archive(rid):
+    """将一条历史记录中的全部 DOCX 报告打包为单个 ZIP 下载。"""
+    folder = _folder_path(rid)
+    report_folder = (folder / 'reports').resolve()
+    if folder not in report_folder.parents or not report_folder.is_dir():
+        raise HTTPException(404, '历史报告不存在。')
+
+    report_paths = sorted(path for path in report_folder.iterdir() if path.is_file() and path.suffix.lower() == '.docx')
+    if not report_paths:
+        raise HTTPException(404, '历史报告不存在。')
+
+    archive = BytesIO()
+    with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as bundle:
+        for path in report_paths:
+            bundle.write(path, arcname=path.name)
+    return archive.getvalue()
 
 
 def image(rid, view):

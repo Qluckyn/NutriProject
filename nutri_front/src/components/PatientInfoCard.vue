@@ -106,7 +106,7 @@ watch(
       </div>
     </div>
 
-    <div v-else class="form-grid five-cols">
+    <div v-else class="form-grid five-cols patient-info-fields">
       <label class="field-block">
         <span>姓名</span>
         <input :value="modelValue.name" type="text" placeholder="选填" :disabled="readonly" @input="updateField('name', $event.target.value)" />
@@ -140,3 +140,9 @@ watch(
     </div>
   </section>
 </template>
+
+<style scoped>
+.patient-info-fields .field-block {
+  align-content: start;
+}
+</style>

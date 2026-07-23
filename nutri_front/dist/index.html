@@ -3,11 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#147a92" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/nutri-icon.svg" />
     <title>营养状态筛查系统</title>
-    <script type="module" crossorigin src="/assets/index-BufsVH9O.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C4WkrvZd.css">
+    <style>
+      #app-loading { display: grid; min-height: 100vh; place-items: center; background: #f5f9fc; color: #35546a; font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; }
+      #app-loading > div { display: grid; justify-items: center; gap: 14px; }
+      #app-loading i { width: 34px; height: 34px; border: 3px solid #c8e4ec; border-top-color: #147a92; border-radius: 50%; animation: app-loading-spin .75s linear infinite; }
+      #app-loading p { margin: 0; font-size: 15px; font-weight: 700; }
+      @keyframes app-loading-spin { to { transform: rotate(360deg); } }
+    </style>
+    <script type="module" crossorigin src="/assets/index-CBMz9F9Y.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BwJA7KYz.css">
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app"><div id="app-loading" role="status"><div><i aria-hidden="true"></i><p>系统加载中…</p></div></div></div>
   </body>
 </html>

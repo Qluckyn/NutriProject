@@ -4,6 +4,6 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   server: {
-    allowedHosts: ['song-behavior-functioning-debut.trycloudflare.com'],
+    allowedHosts: ['.trycloudflare.com'],
   },
 })

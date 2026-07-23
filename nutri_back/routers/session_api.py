@@ -3,12 +3,14 @@ import json
 import shutil
 import sqlite3
 import uuid
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from PIL import Image
 
 from config import DRAFT_VIEWS
@@ -217,8 +219,8 @@ def personalized(scope: DraftScope = Depends(get_draft_scope)):
 @router.post("/history")
 def save_history(payload: Dict[str, object], scope: DraftScope = Depends(get_draft_scope)):
     draft = read_draft(scope)
-    if not all(draft.get(key) for key in ("nrs2002_result", "image_result", "glim_result")):
-        raise HTTPException(422, "请先完成 NRS-2002、面部图像筛查和 GLIM 评估。")
+    if not draft.get("nrs2002_result") or not draft.get("glim_result") or (not draft.get("image_result") and not draft.get("skipped_image")):
+        raise HTTPException(422, "请先完成 NRS-2002、GLIM 评估，并完成或跳过面部图像筛查。")
     record_id, now = uuid.uuid4().hex, datetime.now()
     folder_name = f"{now.strftime('%Y%m%d_%H%M%S')}_{record_id[:8]}"
     folder, reports, images = ARCHIVES / folder_name, ARCHIVES / folder_name / "reports", ARCHIVES / folder_name / "images"
@@ -266,6 +268,30 @@ def delete_history(record_id: str, scope: DraftScope = Depends(get_draft_scope))
     return {"deleted": True}
 
 
+@router.get("/history/{record_id}/reports.zip")
+def history_reports_archive(record_id: str, scope: DraftScope = Depends(get_draft_scope)):
+    row = _history_row(scope, record_id)
+    folder = (ARCHIVES / row[5]).resolve()
+    report_folder = (folder / "reports").resolve()
+    if ARCHIVES.resolve() not in folder.parents or folder not in report_folder.parents or not report_folder.is_dir():
+        raise HTTPException(404, "历史报告不存在。")
+    reports = sorted(path for path in report_folder.iterdir() if path.is_file() and path.suffix.lower() == ".docx")
+    if not reports:
+        raise HTTPException(404, "历史报告不存在。")
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        for path in reports:
+            bundle.write(path, arcname=path.name)
+    patient_name = str(row[2] or "未命名患者").strip()
+    safe_name = "".join("_" if char in ("\\", "/", ":", "*", "?", "\"", "<", ">", "|") else char for char in patient_name).strip() or "未命名患者"
+    try:
+        timestamp = datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d_%H%M%S")
+    except (TypeError, ValueError):
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{safe_name}_全部量表.zip"
+    return Response(archive.getvalue(), media_type="application/zip", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}", "Cache-Control": "no-store"})
+
+
 def _history_file(scope: DraftScope, record_id: str, relative: Path) -> Path:
     row = _history_row(scope, record_id)
     folder = (ARCHIVES / row[5]).resolve()
@@ -290,3 +316,44 @@ def history_image(record_id: str, view: str, scope: DraftScope = Depends(get_dra
     path = _history_file(scope, record_id, Path("images") / f"{view}.jpg")
     return FileResponse(path, media_type="image/jpeg")
 
+
+
+@router.get("/reports/archive")
+def download_current_reports_archive(scope: DraftScope = Depends(get_draft_scope)) -> Response:
+    """将当前会话中已生成的 DOCX 报告打包为单个 ZIP 下载。"""
+    draft = read_draft(scope)
+    report_keys = (
+        ("nrs2002_result", "nrs2002"),
+        ("mnasf_result", "mnasf"),
+        ("image_result", "image"),
+        ("glim_result", "glim"),
+    )
+    archive = io.BytesIO()
+    included = 0
+    output_dir = scale_document_service.OUTPUT_DIR.resolve()
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        for result_key, report_key in report_keys:
+            if report_key == "mnasf" and draft.get("skipped_mnasf"):
+                continue
+            result = draft.get(result_key) or {}
+            document_output = result.get("document_output") if isinstance(result, dict) else None
+            if not document_output:
+                continue
+            path = Path(document_output).resolve()
+            if output_dir not in path.parents or path.suffix.lower() != ".docx" or not path.is_file():
+                raise HTTPException(404, "报告文件不存在，请重新完成该项评估。")
+            bundle.write(path, arcname=path.name)
+            included += 1
+    if not included:
+        raise HTTPException(404, "暂无可下载的评估报告。")
+    patient_name = str((draft.get("patient_info") or {}).get("name") or "未命名患者").strip()
+    safe_name = "".join("_" if char in ("\\", "/", ":", "*", "?", "\"", "<", ">", "|") else char for char in patient_name).strip() or "未命名患者"
+    filename = f"{datetime.now():%Y%m%d_%H%M%S}_{safe_name}_全部量表.zip"
+    return Response(
+        archive.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
+            "Cache-Control": "no-store",
+        },
+    )

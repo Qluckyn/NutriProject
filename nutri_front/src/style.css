@@ -30,6 +30,7 @@ button {
 }
 
 .page-shell {
+  position: relative;
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
   padding: 48px 0 64px;
@@ -1026,7 +1027,7 @@ button {
     display: flex;
     width: fit-content;
     min-height: 42px;
-    margin: 0 0 16px auto;
+    margin: 0 max(0px, calc(100vw - 370px)) 16px auto;
   }
 
   .page-header {

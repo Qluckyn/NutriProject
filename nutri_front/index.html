@@ -9,9 +9,16 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/nutri-icon.svg" />
     <title>营养状态筛查系统</title>
+    <style>
+      #app-loading { display: grid; min-height: 100vh; place-items: center; background: #f5f9fc; color: #35546a; font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; }
+      #app-loading > div { display: grid; justify-items: center; gap: 14px; }
+      #app-loading i { width: 34px; height: 34px; border: 3px solid #c8e4ec; border-top-color: #147a92; border-radius: 50%; animation: app-loading-spin .75s linear infinite; }
+      #app-loading p { margin: 0; font-size: 15px; font-weight: 700; }
+      @keyframes app-loading-spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app"><div id="app-loading" role="status"><div><i aria-hidden="true"></i><p>系统加载中…</p></div></div></div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

@@ -230,7 +230,7 @@ def assess_mna_sf(payload: MNASFRequest) -> Dict[str, object]:
             raise_zh_422("使用小腿围评估时，小腿围为必填且必须大于0。")
         bmi = calc_bmi(payload.weight_records["0"], payload.height)
 
-    q1 = 0 if payload.intake_last_week <= 33 else 1 if payload.intake_last_week <= 66 else 2
+    q1 = 0 if payload.intake_last_week <= 25 else 1 if payload.intake_last_week <= 75 else 2
     q1_reason = f"最近一周摄食量为{intake_label(payload.intake_last_week)}，对应{q1}分。"
 
     if "3" not in payload.weight_records:

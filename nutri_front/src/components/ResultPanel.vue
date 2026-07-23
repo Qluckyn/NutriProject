@@ -34,7 +34,7 @@ function toPercent(value) {
 }
 
 function sgaScore(value) {
-  return Number(value).toFixed(2)
+  return Math.round(Number(value))
 }
 
 // 面部筛查提示营养不良风险时，通知父组件解锁量表评估Tab。

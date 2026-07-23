@@ -1,0 +1,20 @@
+{
+  "name": "营养状态筛查",
+  "short_name": "营养筛查",
+  "description": "老年营养状态辅助筛查工具",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f9fc",
+  "theme_color": "#147a92",
+  "icons": [
+    {
+      "src": "/icons/nutri-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

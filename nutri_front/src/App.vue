@@ -15,6 +15,7 @@ import HistoryPanel from './components/HistoryPanel.vue'
 const emptyDraft = () => ({
   current_step: 1,
   skipped_mnasf: false,
+  skipped_image: false,
   patient_info: {},
   weight_records: {},
   intake_records: {},
@@ -171,7 +172,7 @@ function syncStateFromDraft() {
 
 function inferStepFromDraft() {
   if (draftData.glim_result) return 5
-  if (draftData.image_result) return 4
+  if (draftData.image_result || draftData.skipped_image) return 4
   if (draftData.mnasf_result || draftData.skipped_mnasf) return 3
   if (draftData.nrs2002_result) return 2
   return 1
@@ -414,8 +415,20 @@ function skipMna() {
   currentStep.value = 3
 }
 
+function skipImageScreening() {
+  draftData.skipped_image = true
+  imageResult.value = null
+  explainResult.value = null
+  draftData.image_result = null
+  draftData.explain_result = null
+  showExplainResult.value = false
+  currentStep.value = 4
+  saveDraft()
+}
+
 function onFileChange(viewKey, file) {
   imageFiles[viewKey] = file
+  draftData.skipped_image = false
   imageError.value = ''
   explainError.value = ''
   imageResult.value = null
@@ -501,6 +514,23 @@ async function triggerReportDownload(reportKey) {
   URL.revokeObjectURL(url)
 }
 
+async function triggerReportsArchiveDownload() {
+  const response = await fetch(`${API_BASE}/reports/archive?download_at=${Date.now()}`, { cache: "no-store" })
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    throw new Error(data.detail || "报告打包下载失败。")
+  }
+  const disposition = response.headers.get("content-disposition") || ""
+  const filenameMatch = disposition.match(/filename\*=UTF-8\x27\x27([^;]+)|filename="?([^";]+)"?/i)
+  const filename = decodeURIComponent(filenameMatch?.[1] || filenameMatch?.[2] || "assessment_reports.zip")
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  link.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 async function downloadReport(report) {
   reportMenuOpen.value = false
   if (reportDownloading.value) return
@@ -517,8 +547,7 @@ async function downloadAllReports() {
   reportDownloading.value = true
   reportDownloadError.value = ''
   try {
-    // 不压缩：依次触发每个已生成 DOCX 的浏览器下载，不重复保存草稿。
-    for (const report of availableReportItems.value) await triggerReportDownload(report.key)
+    await triggerReportsArchiveDownload()
   } catch (error) {
     reportDownloadError.value = error.message || '批量下载失败，请稍后重试。'
   } finally { reportDownloading.value = false }
@@ -826,8 +855,8 @@ function formatIntakeFraction(value) {
       <div class="step-actions split-actions">
         <button class="secondary-button" type="button" @click="goPrevious">上一步</button>
         <span class="action-spacer"></span>
-        <button class="secondary-button" type="button" @click="skipMna">跳过此步骤</button>
         <button class="primary-button" type="button" @click="submitMna">开始评估</button>
+        <button v-if="!mnaSFResult" class="secondary-button" type="button" @click="skipMna">跳过此步骤</button>
         <button v-if="mnaSFResult" class="primary-button" type="button" @click="currentStep = 3">下一步</button>
       </div>
     </section>
@@ -866,6 +895,7 @@ function formatIntakeFraction(value) {
           <span v-if="imageLoading" class="spinner" aria-hidden="true"></span>
           {{ imageLoading ? '分析中...' : pendingImageUploads > 0 ? '图片保存中...' : '开始筛查' }}
         </button>
+        <button v-if="!imageResult" class="secondary-button" type="button" @click="skipImageScreening">跳过此步骤</button>
         <button v-if="imageResult" class="primary-button" type="button" @click="currentStep = 4">下一步</button>
       </div>
     </section>
@@ -932,7 +962,6 @@ function formatIntakeFraction(value) {
             <section v-if="personalizedAnalysis.suggestions?.length" class="analysis-block analysis-actions"><h4>建议行动</h4><ol><li v-for="item in personalizedAnalysis.suggestions" :key="item">{{ item }}</li></ol></section>
           </div>
           <section class="analysis-follow-up"><h4>随访建议</h4><ul v-if="Array.isArray(personalizedAnalysis.follow_up)"><li v-for="item in personalizedAnalysis.follow_up" :key="item">{{ item }}</li></ul><p v-else>{{ personalizedAnalysis.follow_up }}</p></section>
-          <details v-if="personalizedAnalysis.missing_information?.length" class="analysis-info-gap"><summary>为进一步个性化，建议补充信息</summary><ul><li v-for="item in personalizedAnalysis.missing_information" :key="item">{{ item }}</li></ul></details>
           <section v-if="personalizedAnalysis.urgent_signs?.length" class="analysis-urgent"><h4>需要尽快专业评估</h4><p>{{ personalizedAnalysis.urgent_signs.join('；') }}</p></section>
           <p class="analysis-disclaimer">{{ personalizedAnalysis.disclaimer }}</p>
         </div>
