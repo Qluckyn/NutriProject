@@ -1,24 +1,323 @@
 {
-  "patient_info": {},
-  "weight_records": {},
-  "intake_records": {},
-  "nrs2002_form": {},
+  "current_step": 5,
+  "skipped_mnasf": false,
+  "skipped_image": false,
+  "patient_info": {
+    "name": "付云",
+    "recordNumber": "A12345",
+    "consultingDoctor": "金清",
+    "age": "71",
+    "gender": "female",
+    "height": "168",
+    "calfCircumference": ""
+  },
+  "weight_records": {
+    "0": "58",
+    "1": "59",
+    "2": "60",
+    "3": "61",
+    "4": "",
+    "5": "",
+    "6": "62",
+    "7": "",
+    "8": "",
+    "9": "",
+    "10": "",
+    "11": "",
+    "12": "63"
+  },
+  "intake_records": {
+    "1": "",
+    "2": "",
+    "3": "",
+    "4": "75"
+  },
+  "nrs2002_form": {
+    "generalConditionImpaired": "true",
+    "selectedDiseaseIds": [
+      "bone_marrow_transplant"
+    ]
+  },
   "mnasf_form": {},
-  "glim_form": {},
+  "glim_form": {
+    "muscleLoss": "unknown",
+    "intakeUnder50Over1w": true,
+    "anyIntakeReductionOver2w": false,
+    "giSymptoms": [],
+    "nutritionImpactConditions": [
+      "short_bowel"
+    ],
+    "acuteDiseaseIds": [],
+    "chronicDiseaseIds": [],
+    "cancerSite": "",
+    "cancerStage": "",
+    "cancerMalnutritionRelated": "",
+    "crp": "",
+    "il6": ""
+  },
   "image_screening_form": {
-    "giSymptoms": "none",
+    "giSymptoms": "mild_under_2w",
     "stressResponse": "no_fever",
     "ankleEdema": "none"
   },
   "images": {
-    "front": null,
+    "front": {
+      "filename": "1000001958.jpg",
+      "saved": true
+    },
     "left": null,
     "right": null
   },
-  "image_result": null,
-  "explain_result": null,
-  "nrs2002_result": null,
-  "mnasf_result": null,
-  "glim_result": null,
-  "personalized_analysis": null
+  "image_result": {
+    "prediction": "malnourished",
+    "malnourished_probability": 0.6468,
+    "normal_probability": 0.3532,
+    "confidence": 0.6468,
+    "sga_normalized_score": 4.5276,
+    "n_views_used": 1,
+    "views_used": [
+      "front"
+    ],
+    "per_view_scores": {
+      "front": {
+        "malnourished_face": 0.6468,
+        "normal_face": 0.3532
+      }
+    },
+    "message": "系统基于正面图像分析，营养不良风险概率为64.68%。该结果仅用于辅助筛查，建议结合量表、体重变化、饮食摄入和临床评估进一步确认。",
+    "sga_evaluation": {
+      "metrics": [
+        {
+          "title": "体重下降",
+          "grade": 1,
+          "level": "SGA-B级",
+          "reason": "6个月内体重丢失6.5%，近6个月内体重下降达5%～10%。"
+        },
+        {
+          "title": "饮食改变",
+          "grade": 1,
+          "level": "SGA-B级",
+          "reason": "摄食量为正常需求的1/2～3/4。"
+        },
+        {
+          "title": "胃肠道症状",
+          "grade": 1,
+          "level": "SGA-B级",
+          "reason": "轻度消化道症状持续不足2周。"
+        },
+        {
+          "title": "活动能力",
+          "grade": 0,
+          "level": "SGA-A级",
+          "reason": "无限制。"
+        },
+        {
+          "title": "应激反应",
+          "grade": 0,
+          "level": "SGA-A级",
+          "reason": "无发热。"
+        },
+        {
+          "title": "皮下脂肪消耗",
+          "grade": 1,
+          "level": "SGA-B级",
+          "reason": "面部图像归一化分值：5/7。"
+        },
+        {
+          "title": "肌肉消耗",
+          "grade": 1,
+          "level": "SGA-B级",
+          "reason": "面部图像归一化分值：5/7。"
+        },
+        {
+          "title": "踝部水肿",
+          "grade": 0,
+          "level": "SGA-A级",
+          "reason": "无踝部水肿。"
+        }
+      ],
+      "code": "SGA-B级",
+      "level": "SGA-B级（轻~中度营养不良）",
+      "className": "risk",
+      "summary": "8项中5项为B或C级，符合轻~中度营养不良判定。"
+    },
+    "document_output": "scales/outputs/20260724_094203_付云_面部图像筛查(SGA)评估表.docx"
+  },
+  "explain_result": {
+    "target_class_note": "以下展示的是营养不良风险的关注依据，供参考",
+    "views": {
+      "front": {
+        "status": "ok",
+        "attention_text": "对眶周区域关注度较高",
+        "reason": null,
+        "heatmap_file": "front_heatmap.png",
+        "roi_overlay_file": "front_roi_overlay.png"
+      }
+    }
+  },
+  "nrs2002_result": {
+    "tool": "NRS-2002",
+    "total_score": 5,
+    "nutrition_score": 1,
+    "disease_score": 3,
+    "age_score": 1,
+    "bmi": 20.5,
+    "weight_loss_details": {
+      "1m_loss_pct": 1.7,
+      "2m_loss_pct": 3.3,
+      "3m_loss_pct": 4.9
+    },
+    "score_evidence": {
+      "nutrition": [
+        {
+          "label": "体重下降",
+          "score": 0,
+          "triggered": false,
+          "reason": "已填写体重下降：1个月1.7%、2个月3.3%、3个月4.9%，均未触发体重下降评分。"
+        },
+        {
+          "label": "BMI",
+          "score": 0,
+          "triggered": false,
+          "reason": "BMI为20.5，未达到BMI受损评分区间。"
+        },
+        {
+          "label": "摄食量",
+          "score": 1,
+          "triggered": true,
+          "reason": "最近一周摄食量为占正常进食的1/2 ~ 3/4，触发1分。"
+        },
+        {
+          "label": "最终采用",
+          "score": 1,
+          "triggered": true,
+          "reason": "营养状态受损分取体重下降、BMI、摄食量三项中的最高值：1分。"
+        }
+      ],
+      "disease": [
+        {
+          "label": "疾病严重程度",
+          "score": 3,
+          "triggered": true,
+          "reason": "骨髓移植（3分）；疾病严重程度取最高值3分。"
+        }
+      ],
+      "age": [
+        {
+          "label": "年龄",
+          "score": 1,
+          "triggered": true,
+          "reason": "年龄71岁，≥70岁，加1分。"
+        }
+      ]
+    },
+    "has_risk": true,
+    "risk_level": "存在营养风险",
+    "recommendation": "建议启动营养支持流程，结合临床情况完善膳食评估、实验室检查和个体化营养干预。",
+    "message": "NRS-2002总分为5分，判定为：存在营养风险。建议启动营养支持流程，结合临床情况完善膳食评估、实验室检查和个体化营养干预。",
+    "document_output": "scales/outputs/20260724_094003_付云_NRS-2002评估表.docx"
+  },
+  "mnasf_result": {
+    "tool": "MNA-SF",
+    "total_score": 10,
+    "score_breakdown": {
+      "q1_appetite": 1,
+      "q2_weight_loss": 2,
+      "q3_mobility": 2,
+      "q4_stress": 2,
+      "q5_mental": 2,
+      "q6_bmi_or_calf": 1
+    },
+    "score_evidence": [
+      {
+        "label": "摄食量",
+        "score": 1,
+        "triggered": true,
+        "reason": "最近一周摄食量为占正常进食的1/2 ~ 3/4，对应1分。"
+      },
+      {
+        "label": "近3个月体重下降",
+        "score": 2,
+        "triggered": true,
+        "reason": "近3个月体重下降3.0kg，未超过3kg，计2分。"
+      },
+      {
+        "label": "活动能力",
+        "score": 2,
+        "triggered": false,
+        "reason": "活动能力为“可以外出”，计2分。"
+      },
+      {
+        "label": "心理创伤或急性疾病",
+        "score": 2,
+        "triggered": false,
+        "reason": "近3个月无心理创伤或急性疾病，计2分。"
+      },
+      {
+        "label": "精神心理状况",
+        "score": 2,
+        "triggered": false,
+        "reason": "精神心理状况为“无问题”，计2分。"
+      },
+      {
+        "label": "BMI/小腿围",
+        "score": 1,
+        "triggered": true,
+        "reason": "BMI为20.5，位于19-21，计1分。"
+      }
+    ],
+    "bmi": 20.5,
+    "weight_loss_3m_kg": 3,
+    "level": "营养不良风险",
+    "message": "MNA-SF总分为10/14分，评估等级为：营养不良风险。建议结合病史和饮食记录进行持续营养管理。",
+    "document_output": "scales/outputs/20260724_094012_付云_MNA-SF评估表.docx"
+  },
+  "glim_result": {
+    "tool": "GLIM",
+    "is_malnourished": true,
+    "phenotypic_met": true,
+    "etiological_met": true,
+    "phenotypic_criteria_triggered": [
+      "非自主体重丢失"
+    ],
+    "etiological_criteria_triggered": [
+      "摄食减少或消化吸收障碍：摄入量≤50%能量需求超过一周、短肠综合征"
+    ],
+    "bmi": 20.5,
+    "weight_loss_6m_pct": 6.5,
+    "weight_loss_over6m_pct": 7.9,
+    "severity": "中度营养不良（1期）",
+    "message": "GLIM标准提示营养不良，严重程度为中度营养不良（1期）。",
+    "document_output": "scales/outputs/20260724_094223_付云_GLIM评估表.docx"
+  },
+  "personalized_analysis": {
+    "summary": "71岁女性，身高168 cm，当前BMI 20.5（处于正常低限），近3个月体重下降4.9%，6个月内下降6.5%；NRS-2002得分为5分（存在营养风险），MNA-SF得分为10分（提示营养不良风险），GLIM筛查符合表型（非自主体重丢失）及病因学标准（摄食减少），判定为中度营养不良（1期）；面部图像筛查亦提示营养不良风险。",
+    "key_findings": [
+      "6个月内体重下降6.5%，超过GLIM诊断阈值（≥5%），且与近期摄食量仅达正常需求75%相印证",
+      "NRS-2002总分5分（营养状态受损1分 + 疾病严重程度3分 + 年龄1分），明确提示存在营养风险",
+      "MNA-SF得分10分（14分制），低于12分临界值，支持营养不良风险判断"
+    ],
+    "suggestions": [
+      "在无禁忌前提下，优先通过少量多餐、加餐高能量密度食物（如坚果酱、酸奶、奶酪、全脂牛奶）温和提升每日能量与蛋白质摄入",
+      "记录每日实际进食种类与份量，重点关注优质蛋白（蛋、豆、鱼、瘦肉）和全谷物摄入是否充足，避免单纯依赖主食或清淡饮食",
+      "保持规律进餐节奏，避免因食欲波动导致全天摄入集中于1–2餐；可尝试餐前轻度活动或温和调味刺激食欲",
+      "关注口腔舒适度与咀嚼能力（如牙齿缺失、义齿适配性），必要时将食物切碎、蒸软或制成泥糊状以降低进食阻力",
+      "暂不自行补充维生素/矿物质制剂；若存在长期食欲差或进食困难，应由临床营养师评估后个体化制定口服营养补充方案"
+    ],
+    "follow_up": [
+      "建议2周内完成基础疾病（尤其心、肾、肝、糖代谢）及胃肠道症状（早饱、腹胀、腹泻/便秘）的临床评估",
+      "推荐由言语治疗师或营养师进行简易吞咽功能初筛（如饮水试验），排除隐匿性吞咽障碍",
+      "随访时需补充近7天详细饮食日志（含加餐）、当前用药清单及是否存在服药后恶心、食欲抑制等副作用"
+    ],
+    "urgent_signs": [
+      "GLIM 筛查提示营养不良风险（中度营养不良（1期）），建议尽快由医生或临床营养师进一步评估。"
+    ],
+    "missing_information": [
+      "基础疾病及器官功能限制（如肾、心、肝功能和糖代谢情况）",
+      "吞咽、咀嚼困难及胃肠道症状",
+      "食物过敏、饮食偏好、文化习惯和获取食物的条件",
+      "当前治疗、药物及由医生或营养师制定的饮食限制"
+    ],
+    "disclaimer": "本内容基于营养筛查结果生成，仅作健康教育与随访辅助参考；所有量表和图像结果均为风险提示，不能判定营养状况，不构成诊断、治疗或用药建议。"
+  }
 }

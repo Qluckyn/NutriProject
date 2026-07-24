@@ -29,7 +29,11 @@ from torchvision import transforms
 # =========================
 # 模型推理、疾病配置和草稿存储等跨模块常量统一放在此处。
 # YHQ的-过滤
-CHECKPOINT_PATH = "./classify_model/weight/best_checkpoint.pth"
+_DEFAULT_CHECKPOINT_PATH = (
+    Path(__file__).resolve().parent / "classify_model" / "weight" / "best_checkpoint.pth"
+)
+# 部署时可将大模型权重放在项目目录外，通过环境变量指定绝对路径。
+CHECKPOINT_PATH = os.getenv("MODEL_CHECKPOINT_PATH", str(_DEFAULT_CHECKPOINT_PATH))
 # CHECKPOINT_PATH = "/root/autodl-tmp/runs/ablation/classify_outputs/clip_real_plus_synth_qc_pool0.7_nipc330_lr1e-5_nomix/my_dataset/clipViT-B/16/n_img_per_cls_500/sd2.1/shot20_seed0_template1_ddlr0.0001_ddep240_lbd0.8/lr1e-05_wd0.0001_mixuag/best_checkpoint.pth"
 
 # ROI辅助监督-raw
@@ -71,7 +75,8 @@ DRAFT_EXPLAIN_DIR = "./draft_explain_images"
 QWEN_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
 QWEN_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").rstrip("/")
 QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen-plus")
-QWEN_TIMEOUT_SECONDS = float(os.getenv("QWEN_TIMEOUT_SECONDS", "45"))
+# 建议生成包含多个结构化字段；为避免网络波动或模型排队导致过早中断，默认等待 90 秒。
+QWEN_TIMEOUT_SECONDS = float(os.getenv("QWEN_TIMEOUT_SECONDS", "90"))
 
 DRAFT_VIEWS = {"front", "left", "right"}
 

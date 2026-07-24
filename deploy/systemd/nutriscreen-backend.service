@@ -1,0 +1,19 @@
+[Unit]
+Description=NutriScreen FastAPI backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 如使用其他目录或 Conda 安装位置，请同时替换以下三个路径。
+WorkingDirectory=/srv/NutriProject/nutri_back
+EnvironmentFile=/srv/NutriProject/deploy/nutri-backend.env
+ExecStart=/root/miniconda3/envs/nutri_serve/bin/python -m uvicorn app:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,5 +1,6 @@
 """调用 Qwen 生成营养筛查辅助建议，并仅传输去标识化、面向决策的摘要。"""
 import json
+import logging
 import re
 from typing import Any, Dict, List
 from urllib import error, request
@@ -7,6 +8,8 @@ from urllib import error, request
 from fastapi import HTTPException
 
 from config import QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL, QWEN_TIMEOUT_SECONDS
+
+logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = """你是营养筛查系统的辅助分析助手。仅依据输入的结构化筛查摘要，以中文给出一般性营养管理建议。
 所有输入均为筛查信息，只能用于提示营养风险，不能用于判定患者营养状况。你的角色是健康教育与随访支持，不得作出诊断、处方、用药、补充剂或精确摄入剂量建议，不得捏造未提供的数据，也不得替代医生或临床营养师。
@@ -135,6 +138,10 @@ def generate_personalized_analysis(draft: Dict[str, object]) -> Dict[str, object
     payload = {
         "model": QWEN_MODEL,
         "temperature": 0.2,
+        # 百炼 OpenAI 兼容接口支持 json_object；结合系统提示中的 JSON 要求，
+        # 可避免模型返回说明文字导致本地 JSON 解析失败。
+        "response_format": {"type": "json_object"},
+        "max_completion_tokens": 1200,
         "messages": [
             {"role": "system", "content": _SYSTEM_PROMPT},
             {
@@ -155,8 +162,15 @@ def generate_personalized_analysis(draft: Dict[str, object]) -> Dict[str, object
             result = json.loads(response.read().decode())
         content = result["choices"][0]["message"]["content"]
     except error.HTTPError as exc:
+        # 仅记录上游状态和请求 ID，绝不记录 Authorization、请求体或患者筛查数据。
+        logger.warning(
+            "Qwen request failed: status=%s request_id=%s",
+            exc.code,
+            exc.headers.get("x-dashscope-request-id", exc.headers.get("x-request-id", "-")),
+        )
         raise HTTPException(status_code=502, detail="Qwen 服务请求失败，请稍后重试。") from exc
     except (error.URLError, TimeoutError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+        logger.warning("Qwen request or response failed: type=%s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="暂时无法连接 Qwen 服务，请稍后重试。") from exc
     return {
         "model": QWEN_MODEL,

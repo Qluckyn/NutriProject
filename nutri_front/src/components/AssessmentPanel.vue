@@ -15,7 +15,7 @@ const diseaseError = ref('')
 const clearMessage = ref('')
 const clearToken = ref(0)
 const diseases = ref([])
-const patient = reactive({ name: '', age: '', gender: 'male', height: '', calfCircumference: '' })
+const patient = reactive({ name: '', age: '', gender: 'male', height: '' })
 const weights = reactive(Object.fromEntries(Array.from({ length: 13 }, (_, index) => [String(index), ''])))
 const intakeWeeks = reactive({ 1: '', 2: '', 3: '', 4: '' })
 const intakeLastWeek = ref('')
@@ -55,7 +55,7 @@ function updateWeeks(next) {
 }
 
 function resetLocalState() {
-  Object.assign(patient, { name: '', age: '', gender: 'male', height: '', calfCircumference: '' })
+  Object.assign(patient, { name: '', age: '', gender: 'male', height: '' })
   Object.assign(weights, Object.fromEntries(Array.from({ length: 13 }, (_, index) => [String(index), ''])))
   Object.assign(intakeWeeks, { 1: '', 2: '', 3: '', 4: '' })
   intakeLastWeek.value = ''
@@ -97,7 +97,7 @@ async function clearAllData() {
       </div>
 
       <NRS2002Form v-if="activeScale === 'nrs'" :key="`nrs-${clearToken}`" :patient="patient" :weights="weights" :intake-last-week="intakeLastWeek" :diseases="diseases" @validation-failed="markValidationFailed" />
-      <MNASFForm v-if="activeScale === 'mna'" :key="`mna-${clearToken}`" :patient="patient" :weights="weights" :intake-last-week="intakeLastWeek" @validation-failed="markValidationFailed" @highlight-calf="showErrors = true" />
+      <MNASFForm v-if="activeScale === 'mna'" :key="`mna-${clearToken}`" :patient="patient" :weights="weights" :intake-last-week="intakeLastWeek" @validation-failed="markValidationFailed" />
       <GLIMForm v-if="activeScale === 'glim'" :key="`glim-${clearToken}`" :patient="patient" :weights="weights" :diseases="diseases" @validation-failed="markValidationFailed" />
     </section>
   </section>

@@ -223,12 +223,7 @@ def assess_nrs2002(payload: NRS2002Request) -> Dict[str, object]:
 def assess_mna_sf(payload: MNASFRequest) -> Dict[str, object]:
     required = ("0",) if "3" not in payload.weight_records else ("0", "3")
     validate_weight_records(payload.weight_records, required)
-    if payload.use_bmi:
-        bmi = calc_bmi(payload.weight_records["0"], payload.height)
-    else:
-        if payload.calf_circumference is None or payload.calf_circumference <= 0:
-            raise_zh_422("使用小腿围评估时，小腿围为必填且必须大于0。")
-        bmi = calc_bmi(payload.weight_records["0"], payload.height)
+    bmi = calc_bmi(payload.weight_records["0"], payload.height)
 
     q1 = 0 if payload.intake_last_week <= 25 else 1 if payload.intake_last_week <= 75 else 2
     q1_reason = f"最近一周摄食量为{intake_label(payload.intake_last_week)}，对应{q1}分。"
@@ -260,26 +255,29 @@ def assess_mna_sf(payload: MNASFRequest) -> Dict[str, object]:
     q5 = payload.mental_status
     q5_reason = f"精神心理状况为“{mental_labels.get(q5, '未知')}”，计{q5}分。"
 
-    if payload.use_bmi:
-        if bmi < 19:
-            q6 = 0
-            q6_reason = f"BMI为{round1(bmi)}，低于19，计0分。"
-        elif bmi <= 21:
-            q6 = 1
-            q6_reason = f"BMI为{round1(bmi)}，位于19-21，计1分。"
-        elif bmi <= 23:
-            q6 = 2
-            q6_reason = f"BMI为{round1(bmi)}，位于21-23，计2分。"
-        else:
-            q6 = 3
-            q6_reason = f"BMI为{round1(bmi)}，大于23，计3分。"
+    if bmi < 19:
+        bmi_score = 0
+    elif bmi <= 21:
+        bmi_score = 1
+    elif bmi <= 23:
+        bmi_score = 2
     else:
-        if float(payload.calf_circumference) < 31:
-            q6 = 0
-            q6_reason = f"小腿围为{round4(payload.calf_circumference)}cm，低于31cm，计0分。"
-        else:
-            q6 = 3
-            q6_reason = f"小腿围为{round4(payload.calf_circumference)}cm，≥31cm，计3分。"
+        bmi_score = 3
+
+    calf_score = None
+    if payload.calf_circumference is not None:
+        calf_score = 0 if float(payload.calf_circumference) < 31 else 3
+
+    q6 = min(bmi_score, calf_score) if calf_score is not None else bmi_score
+    if calf_score is None:
+        q6_method = "bmi"
+        q6_reason = f"BMI为{round1(bmi)}，计{bmi_score}分。未填写小腿围，采用BMI得分。"
+    elif calf_score < bmi_score:
+        q6_method = "calf"
+        q6_reason = f"BMI为{round1(bmi)}，计{bmi_score}分；小腿围为{round4(payload.calf_circumference)}cm，计{calf_score}分。按较低分计，小腿围得分{calf_score}分。"
+    else:
+        q6_method = "bmi"
+        q6_reason = f"BMI为{round1(bmi)}，计{bmi_score}分；小腿围为{round4(payload.calf_circumference)}cm，计{calf_score}分。按较低分计，采用BMI得分{bmi_score}分。"
 
     total = q1 + q2 + q3 + q4 + q5 + q6
     if total >= 12:
@@ -309,6 +307,7 @@ def assess_mna_sf(payload: MNASFRequest) -> Dict[str, object]:
             {"label": "BMI/小腿围", "score": q6, "triggered": q6 < 3, "reason": q6_reason},
         ],
         "bmi": round1(bmi),
+        "q6_scoring_method": q6_method,
         "weight_loss_3m_kg": round4(loss_kg),
         "level": level,
         "message": f"MNA-SF总分为{total}/14分，评估等级为：{level}。建议结合病史和饮食记录进行持续营养管理。",

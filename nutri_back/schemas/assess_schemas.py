@@ -26,7 +26,6 @@ class MNASFRequest(BaseModel):
     mobility: int = Field(..., ge=0, le=2)
     stress_or_acute_disease: bool = Field(...)
     mental_status: int = Field(..., ge=0, le=2)
-    use_bmi: bool = Field(...)
     calf_circumference: Optional[float] = Field(None, gt=0)
 
 

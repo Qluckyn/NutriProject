@@ -30,3 +30,8 @@ nutri_back/history.db
 nutri_back/history_reports/
 nutri_back/sessions/
 nutri_back/scales/outputs/
+
+# 正式服务器私密配置与 Cloudflare Tunnel 凭据
+deploy/nutri-backend.env
+deploy/cloudflared/*.json
+deploy/cloudflared/nutriscreen.yml

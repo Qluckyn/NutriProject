@@ -190,7 +190,7 @@ def generate_mna_document(payload: Any, result: Dict[str, Any]) -> str:
     scores = result["score_breakdown"]
     for row, key in enumerate(("q1_appetite", "q2_weight_loss", "q3_mobility", "q4_stress", "q5_mental"), start=1):
         _append_check(table.cell(row, int(scores[key]) + 1), boxed=True)
-    q6_row = 6 if _value(payload, "use_bmi") else 7
+    q6_row = 6 if result.get("q6_scoring_method") != "calf" else 7
     _append_check(table.cell(q6_row, int(scores["q6_bmi_or_calf"]) + 1), boxed=True)
     _set_cell(table.cell(8, 1), result["total_score"])
     _set_cell(table.cell(9, 1), datetime.now().strftime("%Y-%m-%d"))

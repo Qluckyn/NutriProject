@@ -142,11 +142,6 @@ watch(
         <small v-if="isInvalidHeight()">身高需填写100到250cm之间的数值</small>
       </label>
 
-      <label class="field-block">
-        <span>小腿围</span>
-        <input :value="modelValue.calfCircumference" type="number" min="0.1" step="0.1" placeholder="cm" :disabled="readonly" @input="updateField('calfCircumference', $event.target.value)" />
-        <small>MNA-SF中可替代BMI使用</small>
-      </label>
     </div>
   </section>
 </template>

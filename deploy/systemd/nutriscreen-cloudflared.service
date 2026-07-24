@@ -1,0 +1,16 @@
+[Unit]
+Description=NutriScreen Cloudflare Tunnel
+After=network-online.target nutriscreen-backend.service nginx.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared --config /srv/NutriProject/deploy/cloudflared/nutriscreen.yml tunnel run
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+

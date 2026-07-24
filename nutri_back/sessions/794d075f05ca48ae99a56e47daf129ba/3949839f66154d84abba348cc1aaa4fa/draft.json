@@ -1,9 +1,44 @@
 {
-  "patient_info": {},
-  "weight_records": {},
-  "intake_records": {},
+  "current_step": 2,
+  "skipped_mnasf": false,
+  "skipped_image": true,
+  "patient_info": {
+    "name": "",
+    "recordNumber": "",
+    "consultingDoctor": "",
+    "age": "56",
+    "gender": "male",
+    "height": "165",
+    "calfCircumference": ""
+  },
+  "weight_records": {
+    "0": "55",
+    "1": "",
+    "2": "",
+    "3": "",
+    "4": "",
+    "5": "",
+    "6": "",
+    "7": "",
+    "8": "",
+    "9": "",
+    "10": "",
+    "11": "",
+    "12": ""
+  },
+  "intake_records": {
+    "1": "",
+    "2": "",
+    "3": "",
+    "4": "75"
+  },
   "nrs2002_form": {},
-  "mnasf_form": {},
+  "mnasf_form": {
+    "mobility": "2",
+    "stressOrAcuteDisease": "false",
+    "mentalStatus": "2",
+    "calfCircumference": 33
+  },
   "glim_form": {},
   "image_screening_form": {
     "giSymptoms": "none",
@@ -15,10 +50,223 @@
     "left": null,
     "right": null
   },
-  "image_result": null,
+  "image_result": {
+    "sga_only": true,
+    "sga_evaluation": {
+      "metrics": [
+        {
+          "title": "体重下降",
+          "grade": null,
+          "level": "未评估",
+          "reason": "未填写：SGA体重下降项不勾选。"
+        },
+        {
+          "title": "饮食改变",
+          "grade": 1,
+          "level": "SGA-B级",
+          "reason": "摄食量为正常需求的1/2～3/4。"
+        },
+        {
+          "title": "胃肠道症状",
+          "grade": 0,
+          "level": "SGA-A级",
+          "reason": "无消化道症状。"
+        },
+        {
+          "title": "活动能力",
+          "grade": 0,
+          "level": "SGA-A级",
+          "reason": "无限制。"
+        },
+        {
+          "title": "应激反应",
+          "grade": 0,
+          "level": "SGA-A级",
+          "reason": "无发热。"
+        },
+        {
+          "title": "皮下脂肪消耗",
+          "grade": null,
+          "level": "未评估",
+          "reason": "缺少面部图像分值，无法判定。"
+        },
+        {
+          "title": "肌肉消耗",
+          "grade": null,
+          "level": "未评估",
+          "reason": "缺少面部图像分值，无法判定。"
+        },
+        {
+          "title": "踝部水肿",
+          "grade": 0,
+          "level": "SGA-A级",
+          "reason": "无踝部水肿。"
+        }
+      ],
+      "code": "SGA评估信息不足",
+      "level": "评估信息不足",
+      "className": "good",
+      "summary": "已完成5/8项，需补全后分级。"
+    }
+  },
   "explain_result": null,
-  "nrs2002_result": null,
-  "mnasf_result": null,
-  "glim_result": null,
-  "personalized_analysis": null
+  "nrs2002_result": {
+    "tool": "NRS-2002",
+    "total_score": 1,
+    "nutrition_score": 1,
+    "disease_score": 0,
+    "age_score": 0,
+    "bmi": 20.2,
+    "weight_loss_details": {
+      "1m_loss_pct": null,
+      "2m_loss_pct": null,
+      "3m_loss_pct": null
+    },
+    "score_evidence": {
+      "nutrition": [
+        {
+          "label": "体重下降",
+          "score": 0,
+          "triggered": false,
+          "reason": "1/2/3个月前体重未填写，体重下降项不参与评分。"
+        },
+        {
+          "label": "BMI",
+          "score": 0,
+          "triggered": false,
+          "reason": "BMI为20.2，但全身情况未标记为受损，BMI项不加分。"
+        },
+        {
+          "label": "摄食量",
+          "score": 1,
+          "triggered": true,
+          "reason": "最近一周摄食量为占正常进食的1/2 ~ 3/4，触发1分。"
+        },
+        {
+          "label": "最终采用",
+          "score": 1,
+          "triggered": true,
+          "reason": "营养状态受损分取体重下降、BMI、摄食量三项中的最高值：1分。"
+        }
+      ],
+      "disease": [
+        {
+          "label": "疾病严重程度",
+          "score": 0,
+          "triggered": false,
+          "reason": "未选择NRS-2002疾病严重程度相关疾病，疾病项为0分。"
+        }
+      ],
+      "age": [
+        {
+          "label": "年龄",
+          "score": 0,
+          "triggered": false,
+          "reason": "年龄56岁，<70岁，年龄项为0分。"
+        }
+      ]
+    },
+    "has_risk": false,
+    "risk_level": "暂无营养风险",
+    "recommendation": "建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。",
+    "message": "NRS-2002总分为1分，判定为：暂无营养风险。建议继续常规饮食管理与动态随访，如体重或摄食量下降应及时复评。",
+    "document_output": "scales/outputs/20260724_152001_未命名患者_NRS-2002评估表.docx"
+  },
+  "mnasf_result": {
+    "tool": "MNA-SF",
+    "total_score": 9,
+    "score_breakdown": {
+      "q1_appetite": 1,
+      "q2_weight_loss": 1,
+      "q3_mobility": 2,
+      "q4_stress": 2,
+      "q5_mental": 2,
+      "q6_bmi_or_calf": 1
+    },
+    "score_evidence": [
+      {
+        "label": "摄食量",
+        "score": 1,
+        "triggered": true,
+        "reason": "最近一周摄食量为占正常进食的1/2 ~ 3/4，对应1分。"
+      },
+      {
+        "label": "近3个月体重下降",
+        "score": 1,
+        "triggered": true,
+        "reason": "3个月前体重未填写，按体重下降未知计1分。"
+      },
+      {
+        "label": "活动能力",
+        "score": 2,
+        "triggered": false,
+        "reason": "活动能力为“可以外出”，计2分。"
+      },
+      {
+        "label": "心理创伤或急性疾病",
+        "score": 2,
+        "triggered": false,
+        "reason": "近3个月无心理创伤或急性疾病，计2分。"
+      },
+      {
+        "label": "精神心理状况",
+        "score": 2,
+        "triggered": false,
+        "reason": "精神心理状况为“无问题”，计2分。"
+      },
+      {
+        "label": "BMI/小腿围",
+        "score": 1,
+        "triggered": true,
+        "reason": "BMI为20.2，计1分；小腿围为33.0cm，计3分。按较低分计，采用BMI得分1分。"
+      }
+    ],
+    "bmi": 20.2,
+    "q6_scoring_method": "bmi",
+    "weight_loss_3m_kg": 0,
+    "level": "营养不良风险",
+    "message": "MNA-SF总分为9/14分，评估等级为：营养不良风险。建议结合病史和饮食记录进行持续营养管理。",
+    "document_output": "scales/outputs/20260724_152329_未命名患者_MNA-SF评估表.docx"
+  },
+  "glim_result": {
+    "tool": "GLIM",
+    "is_malnourished": false,
+    "phenotypic_met": false,
+    "etiological_met": false,
+    "phenotypic_criteria_triggered": [],
+    "etiological_criteria_triggered": [],
+    "bmi": 20.2,
+    "weight_loss_6m_pct": null,
+    "weight_loss_over6m_pct": null,
+    "severity": null,
+    "message": "当前未同时满足GLIM表型标准和病因标准，暂不诊断为营养不良，建议动态随访。",
+    "document_output": "scales/outputs/20260724_152020_未命名患者_GLIM评估表.docx"
+  },
+  "personalized_analysis": {
+    "summary": "56岁男性，身高165 cm，当前BMI 20.2（正常低限），近4周摄食量为正常需求的75%；NRS-2002评分为1分（无营养风险），MNA-SF得9分提示存在营养不良风险，GLIM筛查未提示营养不良风险；面部图像筛查未完成；多项体重趋势及长期体重下降数据缺失。",
+    "key_findings": [
+      "MNA-SF得9分（<11分），提示存在营养不良风险，与NRS-2002‘暂无营养风险’结论不一致，需结合临床背景综合判断",
+      "当前BMI 20.2处于正常范围下限，且近4周摄食量仅达需求的75%，构成潜在摄入不足风险",
+      "体重变化数据严重缺失（12次记录中仅1次有效），无法评估近期体重趋势，削弱对营养风险的动态判断"
+    ],
+    "suggestions": [
+      "优先保障能量与蛋白质摄入：在三餐基础上添加2–3次营养密度高的加餐（如鸡蛋、酸奶、坚果酱、奶酪或强化营养的全脂乳制品）",
+      "鼓励规律进餐并关注食欲变化：记录每日实际进食量与主观饥饿/饱胀感，识别可能影响摄食的非疾病因素（如情绪、作息、食物可及性）",
+      "选用易获取、易制备、符合文化习惯的高蛋白食物（如豆腐、鱼肉末、煮蛋、蒸鸡茸），避免过度限制性饮食（除非已有明确医学指征）",
+      "保持适度身体活动（如每日快走20–30分钟），以维持肌肉量和食欲调节，但避免空腹运动或过度疲劳"
+    ],
+    "follow_up": [
+      "2周内复测体重（固定时间、空腹、穿轻便衣物），并同步记录摄食量百分比变化",
+      "若持续摄食不足（<80%需求）或出现乏力、肌肉松软、伤口愈合延迟等表现，建议转介临床营养师进行个体化评估",
+      "下次筛查前补充基础疾病、用药、吞咽咀嚼能力及饮食偏好等关键信息，提升风险判别准确性"
+    ],
+    "urgent_signs": [],
+    "missing_information": [
+      "基础疾病及器官功能限制（如肾、心、肝功能和糖代谢情况）",
+      "吞咽、咀嚼困难及胃肠道症状",
+      "食物过敏、饮食偏好、文化习惯和获取食物的条件",
+      "当前治疗、药物及由医生或营养师制定的饮食限制"
+    ],
+    "disclaimer": "本内容基于营养筛查结果生成，仅作健康教育与随访辅助参考；所有量表和图像结果均为风险提示，不能判定营养状况，不构成诊断、治疗或用药建议。"
+  }
 }

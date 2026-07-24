@@ -69,7 +69,7 @@ const mnaFormRef = ref(null)
 const glimFormRef = ref(null)
 let draftTimer = null
 
-const patientInfo = reactive({ name: '', recordNumber: '', consultingDoctor: '', age: '', gender: 'male', height: '', calfCircumference: '' })
+const patientInfo = reactive({ name: '', recordNumber: '', consultingDoctor: '', age: '', gender: 'male', height: '' })
 const weightRecords = reactive(Object.fromEntries(Array.from({ length: 13 }, (_, index) => [String(index), ''])))
 const intakeRecords = reactive({ 1: '', 2: '', 3: '', 4: '' })
 const intakeLastWeek = ref('')
@@ -131,7 +131,7 @@ function replaceDraftData(nextDraft) {
 }
 
 function syncStateFromDraft() {
-  Object.assign(patientInfo, { name: '', recordNumber: '', consultingDoctor: '', age: '', gender: 'male', height: '', calfCircumference: '' }, draftData.patient_info || {})
+  Object.assign(patientInfo, { name: '', recordNumber: '', consultingDoctor: '', age: '', gender: 'male', height: '' }, draftData.patient_info || {})
   Object.assign(weightRecords, Object.fromEntries(Array.from({ length: 13 }, (_, index) => [String(index), ''])), draftData.weight_records || {})
   Object.assign(intakeRecords, { 1: '', 2: '', 3: '', 4: '' }, draftData.intake_records || {})
   intakeLastWeek.value = intakeRecords['4'] || ''
@@ -849,7 +849,7 @@ function formatIntakeFraction(value) {
 
     <section v-if="currentStep === 2" class="step-panel">
       <WeightRecordTable :model-value="weightRecords" :show-errors="showErrors" :visible-months="step2VisibleMonths" :required-months="step2RequiredMonths" :readonly-months="[0]" @update:model-value="updateWeights" />
-      <MNASFForm ref="mnaFormRef" :patient="patientInfo" :weights="weightRecords" :intake-last-week="intakeLastWeek" :show-submit="false" @validation-failed="markValidationFailed" @highlight-calf="showErrors = true" @assessed="setMnaResult" />
+      <MNASFForm ref="mnaFormRef" :patient="patientInfo" :weights="weightRecords" :intake-last-week="intakeLastWeek" :show-submit="false" @validation-failed="markValidationFailed" @assessed="setMnaResult" />
       <p v-if="validationMessage && currentStep === 2" class="field-error">{{ validationMessage }}</p>
       <div class="step-actions split-actions">
         <button class="secondary-button" type="button" @click="goPrevious">上一步</button>
